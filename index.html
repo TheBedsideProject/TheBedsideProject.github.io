@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Bedside Project</title>
-    <!-- Loads from your local safe project repository path -->
     <script src="supabase.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -12,7 +11,7 @@
 
     <div class="app-viewport">
         
-        <!-- 1. SYSTEM ERROR CLEARANCE OVERLAY -->
+        <!-- 1. DETAILED SYSTEM DEBUG / ACCESS DENIED OVERLAY -->
         <div id="denied-container" class="panel-view error-panel" style="display: none;">
             <div class="error-accent-bar"></div>
             <div class="error-icon">⚠️</div>
@@ -40,8 +39,18 @@
         <div id="settings-container" class="panel-view" style="display: none;">
             <h2>Room Node Configuration</h2>
             <p>Map local room assignments to build active streaming sockets.</p>
+            
             <div class="input-group-label">NEW NODE IDENTIFIER ASSIGNMENT</div>
             <input type="text" id="room-setup-input" placeholder="e.g. 104-A">
+            
+            <!-- Dynamic Theme Engine Selector Section -->
+            <div class="input-group-label">INTERFACE VISUAL THEME ENGINE</div>
+            <select id="theme-selector" class="theme-dropdown">
+                <option value="cyberpunk">Cyberpunk Terminal (Neon Dark)</option>
+                <option value="wireframe">Stark Wireframe (Minimal B&W)</option>
+                <option value="clinical">Clinical Clean (Medical Light)</option>
+            </select>
+            
             <button onclick="saveSettings()">Apply Parameters & Launch</button>
             <button onclick="handleDischarge()" class="discharge-btn">Purge Active Session (Wipe Account)</button>
             <button onclick="showChatUi()" id="cancel-settings-btn" class="secondary-btn" style="display:none;">Cancel Operation</button>
@@ -61,10 +70,8 @@
                 </div>
             </div>
             
-            <!-- Infinite Database Driven Wireframe Room Feed -->
             <div id="wireframe-dashboard-list"></div>
 
-            <!-- Single chat console instance frame -->
             <div id="chat-box-view-wrapper" style="display: none;">
                 <div id="chat-box"></div>
                 <div class="input-deck">
@@ -76,8 +83,7 @@
 
     </div>
 
-    <!-- Swapped to a unique version parameter block to permanently purge browser caches -->
     <script src="config.js"></script>
-    <script src="app.js?v=cache_bypass_final_v5"></script>
+    <script src="app.js?v=patch_theme_v10"></script>
 </body>
 </html>
