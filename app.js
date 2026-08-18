@@ -4,18 +4,28 @@ let currentRoomNumber = "Unknown Room";
 let isViewingChatBox = false;
 
 const scriptElement = document.createElement('script');
-scriptElement.src = 'https://jsdelivr.net';
+const jsdelivrDomain = 'cdn.' + 'jsdelivr' + '.net';
+const supabasePath = 'npm/' + '@supabase/' + 'supabase-js@2';
+scriptElement.src = 'https' + '://' + jsdelivrDomain + '/' + supabasePath;
+
 scriptElement.onload = function() {
     try {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        checkCurrentUser();
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            checkCurrentUser();
+        } else {
+            showAccessDenied();
+        }
     } catch (e) {
+        console.error("Initialization failure:", e);
         showAccessDenied();
     }
 };
+
 scriptElement.onerror = function() {
     showAccessDenied();
 };
+
 document.head.appendChild(scriptElement);
 
 function showAccessDenied() {
@@ -31,29 +41,33 @@ function dismissAccessDenied() {
 }
 
 async function handleSignUp() {
-    if (!supabaseClient) return showAccessDenied();
+    if (!supabaseClient) {
+        alert("Database connection is still initializing. Please wait a second.");
+        return;
+    }
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
     if (!email || !password) return alert('Fill fields completely.');
     
-    const { error } = await supabaseClient.auth.signUp({ email, password });
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
     if (error) {
-        showAccessDenied();
-        return alert(error.message);
+        return alert("Registration Failed: " + error.message);
     }
     alert('Account created! Try logging in.');
 }
 
 async function handleLogin() {
-    if (!supabaseClient) return showAccessDenied();
+    if (!supabaseClient) {
+        alert("Database connection is still initializing. Please wait a second.");
+        return;
+    }
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
     if (!email || !password) return alert('Fill fields completely.');
     
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
-        showAccessDenied();
-        return alert(error.message);
+        return alert("Login Failed: " + error.message);
     }
     currentUser = data.user;
     loadUserProfile();
@@ -67,14 +81,19 @@ async function handleLogout() {
 
 async function checkCurrentUser() {
     if (!supabaseClient) return;
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user) {
-        currentUser = user;
-        loadUserProfile();
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            currentUser = user;
+            loadUserProfile();
+        }
+    } catch (e) {
+        console.log("No active user session detected on load.");
     }
 }
 
 async function loadUserProfile() {
+    if (!supabaseClient || !currentUser) return;
     const { data, error } = await supabaseClient
         .from('profiles')
         .select('room_number')
