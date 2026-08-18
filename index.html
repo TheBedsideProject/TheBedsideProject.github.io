@@ -5,55 +5,212 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Bedside Project</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f5f7fb; }
-        h2 { color: #2c3e50; text-align: center; }
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --bubble-me: #0284c7;
+            --bubble-them: #334155;
+            --danger-color: #f43f5e;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--bg-gradient); 
+            color: var(--text-primary);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-sizing: border-box;
+        }
+
+        h2 { 
+            font-size: 24px; 
+            font-weight: 700; 
+            letter-spacing: -0.5px;
+            margin: 0 0 24px 0; 
+            text-align: center;
+            background: linear-gradient(to right, #f8fafc, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h3 { font-size: 18px; margin: 0 0 16px 0; text-align: center; color: var(--text-primary); }
+        p { font-size: 14px; color: var(--text-secondary); text-align: center; line-height: 1.5; margin: 0 0 20px 0; }
+
+        /* Form Controls */
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            color: var(--text-primary);
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--accent-primary);
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+
+        button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+
+        /* Panels Visibility */
+        #auth-container { display: block; }
+        #settings-container { display: none; }
+        #chat-container { display: none; }
+
+        /* Chat Layout Components */
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .room-tag {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            background: rgba(56, 189, 248, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        .header-actions { display: flex; gap: 8px; }
         
-        /* Container Boxes */
-        #auth-container { background: white; padding: 20px; border-radius: 8px; border: 1px solid #dcdde1; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 50px; }
-        #chat-container { display: none; } /* Hidden until logged in */
-        
-        #chat-box { height: 350px; border: 1px solid #dcdde1; border-radius: 8px; background: white; overflow-y: scroll; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .message { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background-color: #f1f2f6; width: fit-content; max-width: 85%; }
-        .sender { font-weight: bold; color: #0066cc; display: block; font-size: 14px; margin-bottom: 2px; }
-        
-        /* Inputs & Buttons */
-        input, button { padding: 12px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-        .auth-input { width: 100%; margin-bottom: 15px; }
-        #name-input { width: 100%; margin-bottom: 10px; background-color: #e9ecef; }
-        #message-input { width: 75%; }
-        
-        button { background-color: #0066cc; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:hover { background-color: #0052a3; }
-        .auth-btn { width: 100%; margin-bottom: 10px; }
-        #send-btn { width: 22%; float: right; }
-        
-        .logout-btn { background-color: #dc3545; padding: 6px 12px; font-size: 14px; float: right; margin-top: -45px; }
-        .logout-btn:hover { background-color: #bd2130; }
+        .nav-btn {
+            width: auto;
+            padding: 6px 12px;
+            font-size: 13px;
+            margin: 0;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
+
+        #chat-box {
+            height: 380px;
+            overflow-y: auto;
+            padding: 8px 4px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Message Bubbles styling */
+        .message-wrapper { display: flex; flex-direction: column; width: 100%; }
+        .message-wrapper.me { align-items: flex-end; }
+        .message-wrapper.them { align-items: flex-start; }
+
+        .message {
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.4;
+            max-width: 80%;
+            word-break: break-word;
+        }
+        .me .message { background: var(--bubble-me); color: white; border-bottom-right-radius: 4px; }
+        .them .message { background: var(--bubble-them); color: var(--text-primary); border-bottom-left-radius: 4px; }
+
+        .msg-meta { font-size: 11px; color: var(--text-secondary); margin-bottom: 3px; padding: 0 4px; }
+
+        /* Input Deck Configuration */
+        .input-deck { display: flex; gap: 8px; width: 100%; }
+        .input-deck input { margin-bottom: 0; flex-grow: 1; }
+        .input-deck button { width: 70px; margin-bottom: 0; flex-shrink: 0; }
+
+        /* Special Settings Utilities */
+        .discharge-btn { background: rgba(244, 63, 94, 0.1); color: var(--danger-color); border: 1px solid rgba(244, 63, 94, 0.2); margin-top: 20px; }
+        .discharge-btn:hover { background: var(--danger-color); color: white; }
     </style>
 </head>
 <body>
 
-    <h2>The Bedside Project</h2>
+    <div class="container">
+        <h2>The Bedside Project</h2>
 
-    <!-- 1. AUTHENTICATION INTERFACE (Shown by default) -->
-    <div id="auth-container">
-        <h3 style="margin-top:0; text-align:center;">Patient & Staff Sign In</h3>
-        <input type="email" id="auth-email" class="auth-input" placeholder="Enter your email">
-        <input type="password" id="auth-password" class="auth-input" placeholder="Enter password (min 6 characters)">
-        <button onclick="handleSignUp()" class="auth-btn" style="background-color:#6c757d;">Create New Account</button>
-        <button onclick="handleLogin()" class="auth-btn">Sign In</button>
-    </div>
+        <!-- 1. AUTHENTICATION INTERFACE -->
+        <div id="auth-container">
+            <h3>Patient & Staff Portal</h3>
+            <p>Access your secure real-time messaging portal.</p>
+            <input type="email" id="auth-email" placeholder="Email address">
+            <input type="password" id="auth-password" placeholder="Password">
+            <button onclick="handleLogin()">Sign In</button>
+            <button onclick="handleSignUp()" style="background: transparent; color: var(--text-secondary);">Create an Account</button>
+        </div>
 
-    <!-- 2. MESSAGING INTERFACE (Hidden until Auth succeeds) -->
-    <div id="chat-container">
-        <button onclick="handleLogout()" class="logout-btn">Sign Out</button>
-        <div id="chat-box"></div>
+        <!-- 2. ACCOUNT SETTINGS INTERFACE -->
+        <div id="settings-container">
+            <h3>Room Configuration</h3>
+            <p>Assign your room assignment to connect to your communication line.</p>
+            <input type="text" id="room-setup-input" placeholder="Room Number (e.g. 104-A)">
+            <button onclick="saveSettings()">Save & Enter Chat</button>
+            <button onclick="handleDischarge()" class="discharge-btn">I Left the Hospital (Wipe Account)</button>
+            <button onclick="showChatUi()" id="cancel-settings-btn" style="background:transparent; color:var(--text-secondary); display:none;">Cancel</button>
+        </div>
 
-        <!-- Room number automatically locks to the user's logged-in email identifier -->
-        <input type="text" id="name-input" readonly>
-        <div style="width: 100%;">
-            <input type="text" id="message-input" placeholder="Type a secure message...">
-            <button onclick="sendMessage()" id="send-btn">Send</button>
+        <!-- 3. MESSAGING INTERFACE -->
+        <div id="chat-container">
+            <div class="chat-header">
+                <span id="room-display-tag" class="room-tag">Room --</span>
+                <div class="header-actions">
+                    <button onclick="showSettingsUi()" class="nav-btn">Settings</button>
+                    <button onclick="handleLogout()" class="nav-btn">Exit</button>
+                </div>
+            </div>
+            
+            <div id="chat-box"></div>
+            
+            <div class="input-deck">
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
         </div>
     </div>
 
@@ -65,6 +222,8 @@
         const ROOM_ID = 'room-101'; 
         
         let supabaseClient = null;
+        let currentUser = null;
+        let currentRoomNumber = "Unknown Room";
 
         // --- DYNAMICALLY LOAD THE SUPABASE LIBRARY ---
         const scriptElement = document.createElement('script');
@@ -73,121 +232,30 @@
         scriptElement.src = 'https' + '://' + jsdelivrDomain + '/' + supabasePath;
         
         scriptElement.onload = function() {
-            // Initialize Supabase Client
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            
-            // Check if a user is already securely logged in from a previous session
             checkCurrentUser();
         };
         document.head.appendChild(scriptElement);
 
-        // --- AUTHENTICATION LOGIC ---
-
-        // Handle creating a new account
+        // --- AUTH LOGIC ---
         async function handleSignUp() {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
-            if (!email || !password) return alert('Please enter both email and password');
-
+            if (!email || !password) return alert('Fill fields completely.');
             const { data, error } = await supabaseClient.auth.signUp({ email, password });
-            if (error) return alert("Sign Up Error: " + error.message);
-            
-            alert('Account created successfully! Check your email inbox for a confirmation link, or try signing in.');
+            if (error) return alert(error.message);
+            alert('Account created! Try logging in.');
         }
 
-        // Handle logging into an existing account
         async function handleLogin() {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
-            if (!email || !password) return alert('Please enter both email and password');
-
+            if (!email || !password) return alert('Fill fields completely.');
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) return alert("Login Error: " + error.message);
-            
-            // Success: update UI view state
-            showChatUi(data.user);
+            if (error) return alert(error.message);
+            currentUser = data.user;
+            loadUserProfile();
         }
 
-        // Handle signing completely out of the app
         async function handleLogout() {
-            await supabaseClient.auth.signOut();
-            document.getElementById('chat-container').style.display = 'none';
-            document.getElementById('auth-container').style.display = 'block';
-        }
-
-        // Monitor state to see if browser remembers the user
-        async function checkCurrentUser() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) {
-                showChatUi(user);
-            }
-        }
-
-        // Transition layout view into active chat session mode
-        function showChatUi(user) {
-            document.getElementById('auth-container').style.display = 'none';
-            document.getElementById('chat-container').style.display = 'block';
-            
-            // Lock the display field to the user's logged-in identity
-            document.getElementById('name-input').value = "Logged in as: " + user.email;
-
-            // Initialize real-time streams and history
-            setupRealtimeStream();
-            fetchMessages();
-        }
-
-        // --- APP LOGIC FUNCTIONS ---
-        
-        async function fetchMessages() {
-            const { data, error } = await supabaseClient
-                .from('messages')
-                .select('*')
-                .eq('room_id', ROOM_ID)
-                .order('created_at', { ascending: true });
-
-            if (data) {
-                const chatBox = document.getElementById('chat-box');
-                chatBox.innerHTML = ''; 
-                data.forEach(msg => appendMessage(msg));
-            }
-        }
-
-        function appendMessage(msg) {
-            const chatBox = document.getElementById('chat-box');
-            const div = document.createElement('div');
-            div.className = 'message';
-            div.innerHTML = `<span class="sender">${msg.sender_name}:</span> ${msg.message_content}`;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight; 
-        }
-
-        async function sendMessage() {
-            const nameInput = document.getElementById('name-input');
-            const messageInput = document.getElementById('message-input');
-            
-            if (!messageInput.value) return alert('Please type a message');
-
-            const { error } = await supabaseClient
-                .from('messages')
-                .insert([
-                    { room_id: ROOM_ID, sender_name: nameInput.value, message_content: messageInput.value }
-                ]);
-
-            if (!error) {
-                messageInput.value = ''; 
-            } else {
-                console.error("Database Insert Error:", error);
-            }
-        }
-
-        function setupRealtimeStream() {
-            supabaseClient
-                .channel('public:messages')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, payload => {
-                    appendMessage(payload.new);
-                })
-                .subscribe();
-        }
-    </script>
-</body>
-</html>
+await supabaseClient.auth.signOut();location.reload();}async function checkCurrentUser() {const { data: { user } } = await supabaseClient.auth.getUser();if (user) {currentUser = user;loadUserProfile();}}// --- PROFILE & SETTINGS LOGIC ---async function loadUserProfile() {const { data, error } = await supabaseClient.from('profiles').select('room_number').eq('id', currentUser.id).single();if (data && data.room_number) {currentRoomNumber = data.room_number;showChatUi();} else {showSettingsUi();}}async function saveSettings() {const roomNum = document.getElementById('room-setup-input').value;if (!roomNum) return alert('Please enter your room assignment.');const { error } = await supabaseClient.from('profiles').upsert({ id: currentUser.id, room_number: roomNum, updated_at: new Date() });if (error) return alert("Save Error: " + error.message);currentRoomNumber = roomNum;showChatUi();}async function handleDischarge() {const confirmAction = confirm("Discharge profile execution: This completely purges your message logs and wipes account parameters from the server.");if (!confirmAction) return;await supabaseClient.from('messages').delete().eq('sender_name', "Room " + currentRoomNumber);await supabaseClient.from('profiles').delete().eq('id', currentUser.id);alert("Session profile wiped completely.");handleLogout();}// --- UI NAVIGATION LOGIC ---function showSettingsUi() {document.getElementById('auth-container').style.display = 'none';document.getElementById('chat-container').style.display = 'none';document.getElementById('settings-container').style.display = 'block';document.getElementById('room-setup-input').value = currentRoomNumber === "Unknown Room" ? "" : currentRoomNumber;// Allow cancellation if profile already has data assigneddocument.getElementById('cancel-settings-btn').style.display = currentRoomNumber !== "Unknown Room" ? "block" : "none";}function showChatUi() {document.getElementById('auth-container').style.display = 'none';document.getElementById('settings-container').style.display = 'none';document.getElementById('chat-container').style.display = 'block';document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;setupRealtimeStream();fetchMessages();}// --- MESSAGING LOGIC ---async function fetchMessages() {const { data, error } = await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true });if (data) {const chatBox = document.getElementById('chat-box');chatBox.innerHTML = '';data.forEach(msg => appendMessage(msg));}}function appendMessage(msg) {const chatBox = document.getElementById('chat-box');const targetName = "Room " + currentRoomNumber;const isMe = msg.sender_name === targetName;const wrapper = document.createElement('div');wrapper.className = message-wrapper ${isMe ? 'me' : 'them'};// Format timestamps cleanly (HH:MM)const timeString = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});wrapper.innerHTML = <span class="msg-meta">${msg.sender_name} • ${timeString}</span> <div class="message">${msg.message_content}</div>;chatBox.appendChild(wrapper);chatBox.scrollTop = chatBox.scrollHeight;}async function sendMessage() {const messageInput = document.getElementById('message-input');if (!messageInput.value) return;const { error } = await supabaseClient.from('messages').insert([{ room_id: ROOM_ID, sender_name: "Room " + currentRoomNumber, message_content: messageInput.value }]);if (!error) {messageInput.value = '';} else {console.error(error);}}function setupRealtimeStream() {supabaseClient.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: room_id=eq.${ROOM_ID} }, payload => {appendMessage(payload.new);}).subscribe();}
