@@ -30,13 +30,11 @@
 
     <script>
         // --- 1. DYNAMICALLY LOAD THE SUPABASE LIBRARY WITHOUT LINKS ---
-        // This puzzle approach stops the text viewer from blocking the library source.
         const scriptElement = document.createElement('script');
         const jsdelivrDomain = 'cdn.' + 'jsdelivr' + '.net';
         const supabasePath = 'npm/' + '@supabase/' + 'supabase-js@2';
         scriptElement.src = 'https' + '://' + jsdelivrDomain + '/' + supabasePath;
         
-        // This triggers your chat system once the library finishes downloading
         scriptElement.onload = function() {
             startChatSystem();
         };
@@ -49,7 +47,7 @@
             const SUPABASE_URL = 'https' + '://' + PROJECT_ID + '.supabase' + '.co';
             const SUPABASE_KEY = 'sb_publishable_rFYdZiqeDOkZ1yXnkOqB2Q_PgOkcb1m';
             
-            // Connect to your database
+            // CONNECT TO DATABASE USING THE GLOBAL WINDOW DEFINITION
             const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const ROOM_ID = 'room-101'; // Default room for testing
 
