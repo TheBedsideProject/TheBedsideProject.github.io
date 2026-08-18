@@ -21,7 +21,7 @@ window.supabase = {
                     eq: (col, val) => ({
                         single: async () => {
                             const res = await req(`/rest/v1/${t}?${col}=eq.${val}`, "GET");
-                            return { data: (res.data && res.data.length > 0) ? res.data : null };
+                            return { data: (res.data && res.data.length > 0) ? res.data[0] : null };
                         },
                         order: (ob, s) => ({
                             limit: async (l) => ({ data: (await req(`/rest/v1/${t}?sender_name=eq.${val}&order=${ob}.desc&limit=${l}`, "GET")).data || [] }),
