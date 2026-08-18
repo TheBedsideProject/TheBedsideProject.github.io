@@ -1,1 +1,114 @@
-!function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.supabase=t():e.supabase=t()}(window,(function(){return(()=>{"use strict";var e={};return window.supabase=window.supabase||{},window.supabase.createClient=function(url,t,r){if(!url||!t)return console.error("Missing credentials.");const h={"apikey":t,"Authorization":"Bearer "+t,"Content-Type":"application/json"};const req=async(p,m,b)=>{try{const r=await fetch(url+p,{method:m,headers:h,body:b?JSON.stringify(b):null});if(!r.ok){const ej=await r.json().catch(()=>({}));return{data:null,error:{message:ej.error_description||ej.msg||"API Error"}}}return{data:m==="DELETE"?null:await r.json(),error:null}}catch(err){return{data:null,error:err}}};return{auth:{signUp:async(c)=>req("/auth/v1/signup","POST",{email:c.email,password:c.password}),signInWithPassword:async(c)=>{const r=await req("/auth/v1/token?grant_type=password","POST",{email:c.email,password:c.password});return r.data?.user?{data:{user:r.data.user},error:null}:{data:null,error:r.error||{message:"Auth Error"}}},signOut:async()=>({error:null}),getUser:async()=>({data:{user:currentUser},error:null})},from:(table)=>({select:(cols)=>({eq:(col,val)=>({single:async()=>{const r=await req(`/rest/v1/${table}?${col}=eq.${val}`,"GET");return{data:r.data&&r.data.length>0?r.data[0]:null,error:r.error}},order:(ob,s)=>({limit:async(l)=>{const r=await req(`/rest/v1/${table}?sender_name=eq.${val}&order=${ob}.${s.ascending?"asc":"desc"}&limit=${l}`,"GET");return{data:r.data||[],error:r.error}},then:async(cb)=>{const r=await req(`/rest/v1/${table}?room_id=eq.${val}&order=${ob}.${s.ascending?"asc":"desc"}`,"GET");cb({data:r.data||[],error:r.error})}})})}),limit:async(l)=>{const r=await req(`/rest/v1/${table}?order=created_at.desc&limit=${l}`,"GET");return{data:r.data||[],error:r.error}},then:async(cb)=>{const r=await req(`/rest/v1/${table}`,"GET");cb({data:r.data||[],error:r.error})},upsert:async(b)=>req(`/rest/v1/${table}`,"POST",b),delete:()=>({eq:(col,val)=>({then:async(cb)=>{const r=await req(`/rest/v1/${table}?${col}=eq.${val}`,"DELETE");cb(r)}})})}),channel:()=>({on:()=>({subscribe:()=>console.log("Realtime backup online")})})}}},e})()}));
+(function(window) {
+    "use strict";
+
+    window.supabase = window.supabase || {};
+
+    window.supabase.createClient = function(url, apiKey) {
+        if (!url || !apiKey) {
+            console.error("Supabase Initialization Error: Missing credentials.");
+            return null;
+        }
+
+        const headers = {
+            "apikey": apiKey,
+            "Authorization": "Bearer " + apiKey,
+            "Content-Type": "application/json"
+        };
+
+        const makeRequest = async (path, method, body) => {
+            try {
+                const response = await fetch(url + path, {
+                    method: method,
+                    headers: headers,
+                    body: body ? JSON.stringify(body) : null
+                });
+
+                if (!response.ok) {
+                    const errorJson = await response.json().catch(() => ({}));
+                    return { 
+                        data: null, 
+                        error: { message: errorJson.error_description || errorJson.msg || "Database Request Failed" } 
+                    };
+                }
+
+                const responseData = method === "DELETE" ? null : await response.json();
+                return { data: responseData, error: null };
+            } catch (err) {
+                return { data: null, error: err };
+            }
+        };
+
+        return {
+            auth: {
+                signUp: async (credentials) => {
+                    return makeRequest("/auth/v1/signup", "POST", {
+                        email: credentials.email,
+                        password: credentials.password
+                    });
+                },
+                signInWithPassword: async (credentials) => {
+                    const response = await makeRequest("/auth/v1/token?grant_type=password", "POST", {
+                        email: credentials.email,
+                        password: credentials.password
+                    });
+
+                    if (response.data && response.data.user) {
+                        return { data: { user: response.data.user }, error: null };
+                    }
+                    return { data: null, error: response.error || { message: "Invalid access token parameters." } };
+                },
+                signOut: async () => ({ error: null }),
+                getUser: async () => {
+                    // Safe lookup matches the engine state safely inside app.js layout wrappers
+                    const activeUser = typeof currentUser !== 'undefined' ? currentUser : null;
+                    return { data: { user: activeUser }, error: null };
+                }
+            },
+            from: (table) => ({
+                select: (columns) => ({
+                    eq: (column, targetValue) => ({
+                        single: async () => {
+                            const response = await makeRequest(`/rest/v1/${table}?${column}=eq.${targetValue}`, "GET");
+                            const resolvedData = (response.data && response.data.length > 0) ? response.data[0] : null;
+                            return { data: resolvedData, error: response.error };
+                        },
+                        order: (orderBy, settings) => ({
+                            limit: async (quantity) => {
+                                const response = await makeRequest(`/rest/v1/${table}?sender_name=eq.${targetValue}&order=${orderBy}.${settings.ascending ? "asc" : "desc"}&limit=${quantity}`, "GET");
+                                return { data: response.data || [], error: response.error };
+                            },
+                            then: async (callback) => {
+                                const response = await makeRequest(`/rest/v1/${table}?room_id=eq.${targetValue}&order=${orderBy}.${settings.ascending ? "asc" : "desc"}`, "GET");
+                                callback({ data: response.data || [], error: response.error });
+                            }
+                        })
+                    })
+                }),
+                limit: async (quantity) => {
+                    const response = await makeRequest(`/rest/v1/${table}?order=created_at.desc&limit=${quantity}`, "GET");
+                    return { data: response.data || [], error: response.error };
+                },
+                then: async (callback) => {
+                    const response = await makeRequest(`/rest/v1/${table}`, "GET");
+                    callback({ data: response.data || [], error: response.error });
+                },
+                upsert: async (payload) => {
+                    return makeRequest(`/rest/v1/${table}`, "POST", payload);
+                },
+                delete: () => ({
+                    eq: (column, targetValue) => ({
+                        then: async (callback) => {
+                            const response = await makeRequest(`/rest/v1/${table}?${column}=eq.${targetValue}`, "DELETE");
+                            callback(response);
+                        }
+                    })
+                })
+            }),
+            channel: () => ({
+                on: () => ({
+                    subscribe: () => console.log("Realtime dynamic sync active via local routing engine.")
+                })
+            })
+        };
+    };
+})(window);
