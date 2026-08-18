@@ -4,14 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Bedside Project</title>
-    <!-- Links to our customized flat schematic wireframe stylesheet -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="app-viewport">
         
-        <!-- 1. AUTHENTICATION INTERFACE -->
+        <!-- 1. ACCESS DENIED ERROR LAYER -->
+        <div id="denied-container" class="panel-view error-panel" style="display: none;">
+            <div class="error-icon">🛑</div>
+            <h2>Access Denied</h2>
+            <h3>Security Authentication Clearance Required</h3>
+            <p>Your session profile parameters lack the verified tokens required to connect to this bedside node configuration line.</p>
+            <button onclick="dismissAccessDenied()">Return to Login</button>
+        </div>
+
+        <!-- 2. AUTHENTICATION INTERFACE -->
         <div id="auth-container" class="panel-view">
             <h2>The Bedside Project</h2>
             <h3>Patient & Staff Portal</h3>
@@ -22,7 +30,7 @@
             <button onclick="handleSignUp()" class="secondary-btn">Create an Account</button>
         </div>
 
-        <!-- 2. ACCOUNT SETTINGS INTERFACE -->
+        <!-- 3. ACCOUNT SETTINGS INTERFACE -->
         <div id="settings-container" class="panel-view" style="display: none;">
             <h2>Room Configuration</h2>
             <p>Assign your room assignment to connect to your communication line.</p>
@@ -32,27 +40,23 @@
             <button onclick="showChatUi()" id="cancel-settings-btn" class="secondary-btn" style="display:none;">Cancel</button>
         </div>
 
-        <!-- 3. MESSAGING & WIREFRAME DASHBOARD INTERFACE -->
+        <!-- 4. MESSAGING & WIREFRAME DASHBOARD INTERFACE -->
         <div id="chat-container" style="display: none; width: 100%;">
             <div class="dashboard-header">
                 Room --</span>
                 <div class="header-actions">
-                    <!-- Toggle switch lets users view the live stream box cleanly -->
                     <button onclick="toggleViewMode()" id="view-toggle-btn" class="nav-btn primary-nav-btn">💬 Open Chat Box</button>
                     <button onclick="showSettingsUi()" class="nav-btn">Settings</button>
                     <button onclick="handleLogout()" class="nav-btn exit-btn">Exit</button>
                 </div>
             </div>
             
-            <!-- Dynamic Grid Feed matching your exact attached image layout drawing -->
             <div id="wireframe-dashboard-list">
                 <!-- Row nodes are fed dynamically through runtime scripts -->
             </div>
 
-            <!-- Chat box element containing message buffers -->
             <div id="chat-box-view-wrapper" style="display: none;">
                 <div id="chat-box"></div>
-                
                 <div class="input-deck">
                     <input type="text" id="message-input" placeholder="Type a message...">
                     <button onclick="sendMessage()">Send</button>
@@ -62,7 +66,6 @@
 
     </div>
 
-    <!-- Configuration fields first, followed by structural layout handler -->
     <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
