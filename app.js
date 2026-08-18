@@ -55,7 +55,6 @@ async function handleLogin() {
     
     const { data: prof } = await supabaseClient.from('profiles').select('*').eq('room_number', room).single();
     
-    // FIXED: Checks if a valid database record ID exists to ensure it doesn't process blank mock objects
     if (prof && prof.id) {
         if (prof.password_hash !== pass) return alert("Access Denied: Incorrect password for Room " + room);
         currentUser = { id: prof.id, aud: "authenticated" };
