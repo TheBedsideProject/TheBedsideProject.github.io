@@ -1,7 +1,7 @@
 let supabaseClient = null;
 let currentUser = null;
 let currentRoomNumber = "Unknown Room";
-let isViewingChatBox = false; // View state tracking flag
+let isViewingChatBox = false;
 
 // --- 1. DYNAMICALLY LOAD THE SUPABASE LIBRARY ---
 const scriptElement = document.createElement('script');
@@ -36,7 +36,7 @@ async function handleLogin() {
 }
 
 async function handleLogout() {
-    await supabaseClient.auth.signOut();
+    await supabaseClient.signOut();
     location.reload();
 }
 
@@ -104,9 +104,7 @@ function showChatUi() {
     document.getElementById('chat-container').style.display = 'block';
     document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
     
-    // Injects structural list content into wireframe overlay panel
     renderWireframeList();
-    
     setupRealtimeStream();
     fetchMessages();
 }
@@ -167,11 +165,12 @@ function setupRealtimeStream() {
         .channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, payload => {
             appendMessage(payload.new);
+            renderWireframeList(); // Refresh list preview strings when new messages arrive
         })
         .subscribe();
 }
 
-// --- 6. VIEW SEPARATOR CONTROLS (WIREFRAME ENGINE LAYER) ---
+// --- 6. INFINITE WIREFRAME DASHBOARD MOTOR ---
 function toggleViewMode() {
     const listFeed = document.getElementById('wireframe-dashboard-list');
     const chatFeed = document.getElementById('chat-box-view-wrapper');
@@ -191,27 +190,49 @@ function toggleViewMode() {
     }
 }
 
-function renderWireframeList() {
+async function renderWireframeList() {
     const listContainer = document.getElementById('wireframe-dashboard-list');
     if (!listContainer) return;
     listContainer.innerHTML = ''; 
 
-    // Explicit array loop declaration prevents engine parsing exceptions
-    const schematicIndexes =;
-    schematicIndexes.forEach(index => {
+    // 1. Fetch infinitely all active records from your profiles database table
+    const { data: allProfiles, error: profileError } = await supabaseClient
+        .from('profiles')
+        .select('room_number')
+        .order('room_number', { ascending: true });
+
+    if (profileError || !allProfiles) {
+        listContainer.innerHTML = '<div class="wireframe-row"><div class="meta-block"><div class="room-heading">Error reading profiles table</div></div></div>';
+        return;
+    }
+
+    // 2. Loop over every profile dynamically to map its precise live layout parameters
+    for (const profile of allProfiles) {
+        if (!profile.room_number) continue;
+
+        // Fetch the absolute newest single text message captured matching this room context
+        const { data: lastMsgData } = await supabaseClient
+            .from('messages')
+            .select('message_content')
+            .eq('sender_name', "Room " + profile.room_number)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        // Fallback placeholder text if the database row has no transmission history yet
+        let previewText = "No message history yet";
+        if (lastMsgData && lastMsgData.length > 0) {
+            previewText = lastMsgData[0].message_content;
+        }
+
         const row = document.createElement('div');
         row.className = 'wireframe-row';
-        
-        // Highlights the user's real room assignment context natively on the top slot
-        const displayLabel = (index === 1) ? currentRoomNumber : `${100 + index}`;
-        
         row.innerHTML = `
             <div class="status-indicator"></div>
             <div class="meta-block">
-                <div class="room-heading">Room ${displayLabel}</div>
-                <div class="last-transmission-text">LAST SENT TEXT</div>
+                <div class="room-heading">Room ${profile.room_number}</div>
+                <div class="last-transmission-text">${previewText}</div>
             </div>
         `;
         listContainer.appendChild(row);
-    });
+    }
 }
