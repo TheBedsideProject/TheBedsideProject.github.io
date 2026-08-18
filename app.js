@@ -13,12 +13,7 @@ function init() {
         if (savedRoom && savedUser) {
             currentRoomNumber = savedRoom;
             currentUser = JSON.parse(savedUser);
-            // Safely waits for the HTML layout blocks to finish building before injecting strings
-            if (document.readyState === "loading") {
-                document.addEventListener("DOMContentLoaded", showChatUi);
-            } else {
-                showChatUi();
-            }
+            showChatUi();
         }
     } catch(e) { 
         showAccessDenied(e); 
@@ -26,20 +21,39 @@ function init() {
 }
 
 function showAccessDenied(err) {
-    document.getElementById('auth-container').style.display = document.getElementById('chat-container').style.display = document.getElementById('settings-container').style.display = 'none';
-    document.getElementById('denied-container').style.display = 'block';
-    document.getElementById('error-debug-details').innerText = `ERROR LOG:\n${err.stack || err.message || err}`;
+    const auth = document.getElementById('auth-container');
+    const chat = document.getElementById('chat-container');
+    const settings = document.getElementById('settings-container');
+    const denied = document.getElementById('denied-container');
+    const debug = document.getElementById('error-debug-details');
+    
+    if (auth) auth.style.display = 'none';
+    if (chat) chat.style.display = 'none';
+    if (settings) settings.style.display = 'none';
+    if (denied) denied.style.display = 'block';
+    if (debug) debug.innerText = `ERROR LOG:\n${err.stack || err.message || err}`;
 }
 
-function dismissAccessDenied() { document.getElementById('denied-container').style.display = 'none'; document.getElementById('auth-container').style.display = 'block'; init(); }
+function dismissAccessDenied() { 
+    const denied = document.getElementById('denied-container');
+    const auth = document.getElementById('auth-container');
+    if (denied) denied.style.display = 'none'; 
+    if (auth) auth.style.display = 'block'; 
+    init(); 
+}
 
 async function handleLogin() {
     if (!supabaseClient) return alert("Initializing connectivity...");
-    const roomInput = document.getElementById('auth-room').value.trim();
-    if (!roomInput) return alert('Please enter your room identifier assignment.');
+    const roomInput = document.getElementById('auth-room');
+    const passInput = document.getElementById('auth-password');
+    if (!roomInput || !passInput) return;
     
-    currentRoomNumber = roomInput;
-    currentUser = { id: "user_" + roomInput.toLowerCase().replace(/[^a-z0-9]/g, ''), aud: "authenticated" };
+    const room = roomInput.value.trim();
+    const pass = passInput.value;
+    if (!room || !pass) return alert('Fill fields completely.');
+    
+    currentRoomNumber = room;
+    currentUser = { id: "user_" + room.toLowerCase().replace(/[^a-z0-9]/g, ''), aud: "authenticated" };
     
     localStorage.setItem('bedside_active_room', currentRoomNumber);
     localStorage.setItem('bedside_active_user', JSON.stringify(currentUser));
@@ -58,7 +72,9 @@ function handleLogout() {
 }
 
 async function saveSettings() {
-    const rNum = document.getElementById('room-setup-input').value.trim();
+    const input = document.getElementById('room-setup-input');
+    if (!input) return;
+    const rNum = input.value.trim();
     if (!rNum) return alert('Enter room assignment.');
     await supabaseClient.from('profiles').upsert({ id: currentUser.id, room_number: rNum, updated_at: new Date() });
     currentRoomNumber = rNum;
@@ -74,22 +90,33 @@ async function handleDischarge() {
 }
 
 function showSettingsUi() {
-    document.getElementById('denied-container').style.display = document.getElementById('auth-container').style.display = document.getElementById('chat-container').style.display = 'none';
-    document.getElementById('settings-container').style.display = 'block';
-    document.getElementById('room-setup-input').value = currentRoomNumber === "Unknown Room" ? "" : currentRoomNumber;
-    document.getElementById('cancel-settings-btn').style.display = currentRoomNumber !== "Unknown Room" ? "block" : "none";
+    const denied = document.getElementById('denied-container');
+    const auth = document.getElementById('auth-container');
+    const chat = document.getElementById('chat-container');
+    const settings = document.getElementById('settings-container');
+    const setupInput = document.getElementById('room-setup-input');
+    const cancelBtn = document.getElementById('cancel-settings-btn');
+    
+    if (denied) denied.style.display = 'none';
+    if (auth) auth.style.display = 'none';
+    if (chat) chat.style.display = 'none';
+    if (settings) settings.style.display = 'block';
+    if (setupInput) setupInput.value = currentRoomNumber === "Unknown Room" ? "" : currentRoomNumber;
+    if (cancelBtn) cancelBtn.style.display = currentRoomNumber !== "Unknown Room" ? "block" : "none";
 }
 
 function showChatUi() {
-    document.getElementById('denied-container').style.display = 'none';
-    document.getElementById('auth-container').style.display = 'none';
-    document.getElementById('settings-container').style.display = 'none';
-    document.getElementById('chat-container').style.display = 'block';
-    
+    const denied = document.getElementById('denied-container');
+    const auth = document.getElementById('auth-container');
+    const settings = document.getElementById('settings-container');
+    const chat = document.getElementById('chat-container');
     const displayTag = document.getElementById('room-display-tag');
-    if (displayTag) {
-        displayTag.innerText = "Room " + currentRoomNumber;
-    }
+    
+    if (denied) denied.style.display = 'none';
+    if (auth) auth.style.display = 'none';
+    if (settings) settings.style.display = 'none';
+    if (chat) chat.style.display = 'block';
+    if (displayTag) displayTag.innerText = "Room " + currentRoomNumber;
     
     renderWireframeList(); 
     setupRealtimeStream(); 
@@ -98,22 +125,33 @@ function showChatUi() {
 
 async function fetchMessages() {
     await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true }).then(({ data }) => {
-        if (data) { const box = document.getElementById('chat-box'); box.innerHTML = ''; data.forEach(msg => appendMessage(msg)); }
+        if (data) { 
+            const box = document.getElementById('chat-box'); 
+            if (box) {
+                box.innerHTML = ''; 
+                data.forEach(msg => appendMessage(msg)); 
+            }
+        }
     });
 }
 
 function appendMessage(msg) {
-    const box = document.getElementById('chat-box'); if (!box) return;
-    const isMe = msg.sender_name === "Room " + currentRoomNumber, wrapper = document.createElement('div');
+    const box = document.getElementById('chat-box'); 
+    if (!box) return;
+    const isMe = msg.sender_name === "Room " + currentRoomNumber;
+    const wrapper = document.createElement('div');
     wrapper.className = `message-wrapper ${isMe ? 'me' : 'them'}`;
     wrapper.innerHTML = `<span class="msg-meta">${msg.sender_name} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><div class="message">${msg.message_content}</div>`;
-    box.appendChild(wrapper); box.scrollTop = box.scrollHeight;
+    box.appendChild(wrapper); 
+    box.scrollTop = box.scrollHeight;
 }
 
 async function sendMessage() {
-    const input = document.getElementById('message-input'); if (!input || !input.value.trim()) return;
+    const input = document.getElementById('message-input'); 
+    if (!input || !input.value.trim()) return;
     await supabaseClient.from('messages').insert([{ room_id: ROOM_ID, sender_name: "Room " + currentRoomNumber, message_content: input.value.trim() }]);
-    input.value = ''; fetchMessages();
+    input.value = ''; 
+    fetchMessages();
 }
 
 function setupRealtimeStream() {
@@ -121,32 +159,36 @@ function setupRealtimeStream() {
 }
 
 function toggleViewMode() {
-    const lf = document.getElementById('wireframe-dashboard-list'), cf = document.getElementById('chat-box-view-wrapper'), toggleBtn = document.getElementById('view-toggle-btn');
+    const lf = document.getElementById('wireframe-dashboard-list');
+    const cf = document.getElementById('chat-box-view-wrapper');
+    const toggleBtn = document.getElementById('view-toggle-btn');
+    
     isViewingChatBox = !isViewingChatBox;
-    lf.style.display = isViewingChatBox ? 'none' : 'block'; cf.style.display = isViewingChatBox ? 'block' : 'none';
-    toggleBtn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
+    if (lf) lf.style.display = isViewingChatBox ? 'none' : 'block'; 
+    if (cf) cf.style.display = isViewingChatBox ? 'block' : 'none';
+    if (toggleBtn) toggleBtn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
     if (!isViewingChatBox) renderWireframeList();
 }
 
 function selectActiveTargetRoom(selectedRoom) {
     currentRoomNumber = selectedRoom;
     const displayTag = document.getElementById('room-display-tag');
-    if (displayTag) {
-        displayTag.innerText = "Room " + currentRoomNumber;
-    }
+    if (displayTag) displayTag.innerText = "Room " + currentRoomNumber;
     isViewingChatBox = false;
     toggleViewMode();
 }
 
 async function renderWireframeList() {
-    const container = document.getElementById('wireframe-dashboard-list'); if (!container) return;
+    const container = document.getElementById('wireframe-dashboard-list'); 
+    if (!container) return;
     container.innerHTML = '';
     await supabaseClient.from('profiles').select('room_number').order('room_number', { ascending: true }).then(async ({ data: profs }) => {
         if (!profs) return;
         for (const p of profs) {
             if (!p.room_number) continue;
             const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
-            const txt = (msg && msg.length > 0) ? msg.message_content : "No message history yet", row = document.createElement('div');
+            const txt = (msg && msg.length > 0) ? msg.message_content : "No message history yet";
+            const row = document.createElement('div');
             row.className = 'wireframe-row';
             row.style.cursor = 'pointer';
             row.onclick = () => selectActiveTargetRoom(p.room_number);
@@ -156,4 +198,5 @@ async function renderWireframeList() {
     });
 }
 
+// Fixed Timing Layer: This event handler guarantees HTML structures are drawn completely before executing code loops
 window.addEventListener('load', init);
