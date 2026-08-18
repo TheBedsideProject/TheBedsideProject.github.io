@@ -52,14 +52,18 @@ async function handleLogin() {
     const room = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
     if (!room || !pass) return alert('Fill fields completely.');
     const genId = "user_" + room.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
     const { data: prof } = await supabaseClient.from('profiles').select('*').eq('room_number', room).single();
-    if (prof) {
+    
+    // FIXED: Checks if a valid database record ID exists to ensure it doesn't process blank mock objects
+    if (prof && prof.id) {
         if (prof.password_hash !== pass) return alert("Access Denied: Incorrect password for Room " + room);
         currentUser = { id: prof.id, aud: "authenticated" };
     } else {
         currentUser = { id: genId, aud: "authenticated" };
         await supabaseClient.from('profiles').upsert({ id: currentUser.id, room_number: room, password_hash: pass, updated_at: new Date() });
     }
+    
     localStorage.setItem('bedside_active_room', room);
     localStorage.setItem('bedside_active_user', JSON.stringify(currentUser));
     currentRoomNumber = room; showChatUi();
@@ -104,7 +108,6 @@ function showChatUi() {
     const chat = document.getElementById('chat-container');
     const displayTag = document.getElementById('room-display-tag');
 
-    // CRITICAL FIX: If the DOM is too slow and elements are null, try again in 50 milliseconds
     if (!denied || !auth || !settings || !chat || !displayTag) {
         setTimeout(showChatUi, 50);
         return;
