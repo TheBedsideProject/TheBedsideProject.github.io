@@ -3,18 +3,20 @@ let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room
 function init() {
     try {
         if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-            throw new Error("Local supabase.js script is missing or named incorrectly in your project folder.");
+            throw new Error("Supabase library object constructor not loaded on window layer yet. Check if your project file name matches exactly: 'supabase.js'.");
         }
         if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js credentials could not be loaded.");
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         supabaseClient.auth.getUser().then(({ data }) => { if (data?.user) { currentUser = data.user; loadUserProfile(); } });
-    } catch(e) { showAccessDenied(e); }
+    } catch(e) { 
+        showAccessDenied(e); 
+    }
 }
 
 function showAccessDenied(err) {
     document.getElementById('auth-container').style.display = document.getElementById('chat-container').style.display = document.getElementById('settings-container').style.display = 'none';
     document.getElementById('denied-container').style.display = 'block';
-    document.getElementById('error-debug-details').innerText = `ERROR LOG:\n${err.message || err}`;
+    document.getElementById('error-debug-details').innerText = `ERROR LOG:\n${err.stack || err.message || err}`;
 }
 
 function dismissAccessDenied() { document.getElementById('denied-container').style.display = 'none'; document.getElementById('auth-container').style.display = 'block'; init(); }
@@ -98,9 +100,9 @@ function setupRealtimeStream() {
 }
 
 function toggleViewMode() {
-    const lf = document.getElementById('wireframe-dashboard-list'), chatFeed = document.getElementById('chat-box-view-wrapper'), toggleBtn = document.getElementById('view-toggle-btn');
+    const lf = document.getElementById('wireframe-dashboard-list'), cf = document.getElementById('chat-box-view-wrapper'), toggleBtn = document.getElementById('view-toggle-btn');
     isViewingChatBox = !isViewingChatBox;
-    lf.style.display = isViewingChatBox ? 'none' : 'block'; chatFeed.style.display = isViewingChatBox ? 'block' : 'none';
+    lf.style.display = isViewingChatBox ? 'none' : 'block'; cf.style.display = isViewingChatBox ? 'block' : 'none';
     toggleBtn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
     if (!isViewingChatBox) renderWireframeList();
 }
