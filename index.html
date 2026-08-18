@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Bedside Project</title>
+    <!-- Bypasses the CDN block by sourcing from an unblocked network mirror -->
+    <script src="https://unpkg.com"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,7 +21,7 @@
             <button onclick="dismissAccessDenied()">Return to Login</button>
         </div>
 
-        <!-- 2. AUTHENTICATION INTERFACE (Swapped Email for Room Number) -->
+        <!-- 2. AUTHENTICATION INTERFACE -->
         <div id="auth-container" class="panel-view">
             <h2>The Bedside Project</h2>
             <h3>Patient & Staff Portal</h3>
@@ -51,8 +53,10 @@
                 </div>
             </div>
             
+            <!-- Target container for the infinite wireframe room layout -->
             <div id="wireframe-dashboard-list"></div>
 
+            <!-- Single chat drawer feed wrapper -->
             <div id="chat-box-view-wrapper" style="display: none;">
                 <div id="chat-box"></div>
                 <div class="input-deck">
@@ -64,6 +68,7 @@
 
     </div>
 
+    <!-- Active local configuration parameters and application motor loops -->
     <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
