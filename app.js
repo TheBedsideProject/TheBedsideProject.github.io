@@ -2,8 +2,10 @@ window.supabase = {
     createClient: (u, k) => {
         const h = { "apikey": k, "Authorization": "Bearer " + k, "Content-Type": "application/json" };
         const req = async (p, m, b) => {
-            const r = await fetch(u + p, { method: m, headers: h, body: b ? JSON.stringify(b) : null });
-            return { data: r.ok && m !== "DELETE" ? await r.json() : null, error: r.ok ? null : { message: "API Error" } };
+            try {
+                const r = await fetch(u + p, { method: m, headers: h, body: b ? JSON.stringify(b) : null });
+                return { data: r.ok && m !== "DELETE" ? await r.json() : null, error: r.ok ? null : { message: "API Error" } };
+            } catch(e) { return { data: null, error: e }; }
         };
         return {
             auth: {
@@ -17,7 +19,10 @@ window.supabase = {
             from: (t) => ({
                 select: (q) => ({
                     eq: (col, val) => ({
-                        single: async () => ({ data: (await req(`/rest/v1/${t}?${col}=eq.${val}`, "GET")).data?.[0] || null }),
+                        single: async () => {
+                            const res = await req(`/rest/v1/${t}?${col}=eq.${val}`, "GET");
+                            return { data: (res.data && res.data.length > 0) ? res.data : null };
+                        },
                         order: (ob, s) => ({
                             limit: async (l) => ({ data: (await req(`/rest/v1/${t}?sender_name=eq.${val}&order=${ob}.desc&limit=${l}`, "GET")).data || [] }),
                             then: async (cb) => cb({ data: (await req(`/rest/v1/${t}?room_id=eq.${val}&order=${ob}.asc`, "GET")).data || [] })
@@ -33,6 +38,7 @@ window.supabase = {
 let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room", isViewingChatBox = false;
 function init() {
     try {
+        if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js connection keys are unassigned.");
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         supabaseClient.auth.getUser().then(({ data }) => { if (data?.user) { currentUser = data.user; loadUserProfile(); } });
     } catch(e) { showAccessDenied(e); }
@@ -123,7 +129,7 @@ async function renderWireframeList() {
         for (const p of profs) {
             if (!p.room_number) continue;
             const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
-            const txt = (msg && msg.length > 0) ? msg[0].message_content : "No message history yet", row = document.createElement('div');
+            const txt = (msg && msg.length > 0) ? msg.message_content : "No message history yet", row = document.createElement('div');
             row.className = 'wireframe-row';
             row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${txt}</div></div>`;
             container.appendChild(row);
