@@ -3,18 +3,22 @@ let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room
 function init() {
     try {
         if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-            throw new Error("Supabase library object constructor not loaded on window layer yet. Check if your project file name matches exactly: 'supabase.js'.");
+            throw new Error("Supabase library script failed to load. Check supabase.js.");
         }
         if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js credentials could not be loaded.");
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // Checks local storage properties to see if an anonymous room is active
         const savedRoom = localStorage.getItem('bedside_active_room');
         const savedUser = localStorage.getItem('bedside_active_user');
         if (savedRoom && savedUser) {
             currentRoomNumber = savedRoom;
             currentUser = JSON.parse(savedUser);
-            showChatUi();
+            // Safely waits for the HTML layout blocks to finish building before injecting strings
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", showChatUi);
+            } else {
+                showChatUi();
+            }
         }
     } catch(e) { 
         showAccessDenied(e); 
@@ -34,25 +38,17 @@ async function handleLogin() {
     const roomInput = document.getElementById('auth-room').value.trim();
     if (!roomInput) return alert('Please enter your room identifier assignment.');
     
-    // Fires native anonymous access token bypassing email rate restrictions
-    const { data, error } = await supabaseClient.auth.signInAnonymously();
-    if (error) return alert("Connection Failed: " + error.message);
-    
-    currentUser = data.user;
     currentRoomNumber = roomInput;
+    currentUser = { id: "user_" + roomInput.toLowerCase().replace(/[^a-z0-9]/g, ''), aud: "authenticated" };
     
-    // Persists session context parameters locally on the machine
     localStorage.setItem('bedside_active_room', currentRoomNumber);
     localStorage.setItem('bedside_active_user', JSON.stringify(currentUser));
     
-    // Creates a reference profile row mapping your room number cleanly to your session token
     await supabaseClient.from('profiles').upsert({ id: currentUser.id, room_number: currentRoomNumber, updated_at: new Date() });
-    
     showChatUi();
 }
 
 async function handleSignUp() {
-    // Both entry targets now point to anonymous generation to drop emails completely
     handleLogin();
 }
 
@@ -85,15 +81,25 @@ function showSettingsUi() {
 }
 
 function showChatUi() {
-    document.getElementById('denied-container').style.display = document.getElementById('auth-container').style.display = document.getElementById('settings-container').style.display = 'none';
+    document.getElementById('denied-container').style.display = 'none';
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('settings-container').style.display = 'none';
     document.getElementById('chat-container').style.display = 'block';
-    document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
-    renderWireframeList(); setupRealtimeStream(); fetchMessages();
+    
+    const displayTag = document.getElementById('room-display-tag');
+    if (displayTag) {
+        displayTag.innerText = "Room " + currentRoomNumber;
+    }
+    
+    renderWireframeList(); 
+    setupRealtimeStream(); 
+    fetchMessages();
 }
 
 async function fetchMessages() {
-    const { data } = await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true });
-    if (data) { const box = document.getElementById('chat-box'); box.innerHTML = ''; data.forEach(msg => appendMessage(msg)); }
+    await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true }).then(({ data }) => {
+        if (data) { const box = document.getElementById('chat-box'); box.innerHTML = ''; data.forEach(msg => appendMessage(msg)); }
+    });
 }
 
 function appendMessage(msg) {
@@ -124,7 +130,10 @@ function toggleViewMode() {
 
 function selectActiveTargetRoom(selectedRoom) {
     currentRoomNumber = selectedRoom;
-    document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
+    const displayTag = document.getElementById('room-display-tag');
+    if (displayTag) {
+        displayTag.innerText = "Room " + currentRoomNumber;
+    }
     isViewingChatBox = false;
     toggleViewMode();
 }
@@ -132,18 +141,19 @@ function selectActiveTargetRoom(selectedRoom) {
 async function renderWireframeList() {
     const container = document.getElementById('wireframe-dashboard-list'); if (!container) return;
     container.innerHTML = '';
-    const { data: profs } = await supabaseClient.from('profiles').select('room_number').order('room_number', { ascending: true });
-    if (!profs) return;
-    for (const p of profs) {
-        if (!p.room_number) continue;
-        const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
-        const txt = (msg && msg.length > 0) ? msg.message_content : "No message history yet", row = document.createElement('div');
-        row.className = 'wireframe-row';
-        row.style.cursor = 'pointer';
-        row.onclick = () => selectActiveTargetRoom(p.room_number);
-        row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${txt}</div></div>`;
-        container.appendChild(row);
-    }
+    await supabaseClient.from('profiles').select('room_number').order('room_number', { ascending: true }).then(async ({ data: profs }) => {
+        if (!profs) return;
+        for (const p of profs) {
+            if (!p.room_number) continue;
+            const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
+            const txt = (msg && msg.length > 0) ? msg.message_content : "No message history yet", row = document.createElement('div');
+            row.className = 'wireframe-row';
+            row.style.cursor = 'pointer';
+            row.onclick = () => selectActiveTargetRoom(p.room_number);
+            row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${txt}</div></div>`;
+            container.appendChild(row);
+        }
+    });
 }
 
 window.addEventListener('load', init);
