@@ -1,18 +1,41 @@
 let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room", isViewingChatBox = false;
+
 function init() {
     try {
+        // Enforce fallback base styling rules
+        const savedTheme = localStorage.getItem('bedside_theme') || 'cyberpunk';
+        document.body.className = 'theme-' + savedTheme;
+        const selector = document.getElementById('theme-selector');
+        if (selector) selector.value = savedTheme;
+
+        if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+            throw new Error("Supabase library script failed to load. Check supabase.js.");
+        }
+        if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js credentials could not be loaded.");
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const r = localStorage.getItem('bedside_active_room'), u = localStorage.getItem('bedside_active_user');
-        if (r && u) { currentRoomNumber = r; currentUser = JSON.parse(u); showChatUi(); }
-    } catch(e) { showAccessDenied(e); }
+        
+        const savedRoom = localStorage.getItem('bedside_active_room');
+        const savedUser = localStorage.getItem('bedside_active_user');
+        if (savedRoom && savedUser) {
+            currentRoomNumber = savedRoom;
+            currentUser = JSON.parse(savedUser);
+            showChatUi();
+        }
+    } catch(e) { 
+        showAccessDenied(e); 
+    }
 }
+
 function showAccessDenied(err) {
     document.getElementById('auth-container').style.display = document.getElementById('chat-container').style.display = document.getElementById('settings-container').style.display = 'none';
     document.getElementById('denied-container').style.display = 'block';
     document.getElementById('error-debug-details').innerText = `ERROR LOG:\n${err.stack || err.message || err}`;
 }
+
 function dismissAccessDenied() { document.getElementById('denied-container').style.display = 'none'; document.getElementById('auth-container').style.display = 'block'; init(); }
+
 async function handleLogin() {
+    if (!supabaseClient) return alert("Initializing connectivity...");
     const room = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
     if (!room || !pass) return alert('Fill fields completely.');
     const genId = "user_" + room.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -28,38 +51,53 @@ async function handleLogin() {
     localStorage.setItem('bedside_active_user', JSON.stringify(currentUser));
     currentRoomNumber = room; showChatUi();
 }
+
 async function handleSignUp() { handleLogin(); }
 function handleLogout() { localStorage.clear(); location.reload(); }
+
 async function saveSettings() {
     const rNum = document.getElementById('room-setup-input').value.trim();
     if (!rNum) return alert('Enter room assignment.');
+    
+    // Process theme update configuration parameters
+    const themeSelector = document.getElementById('theme-selector');
+    if (themeSelector) {
+        localStorage.setItem('bedside_theme', themeSelector.value);
+        document.body.className = 'theme-' + themeSelector.value;
+    }
+
     const { data: prof } = await supabaseClient.from('profiles').select('password_hash').eq('id', currentUser.id).single();
     await supabaseClient.from('profiles').upsert({ id: currentUser.id, room_number: rNum, password_hash: prof ? prof.password_hash : "123456", updated_at: new Date() });
     currentRoomNumber = rNum; localStorage.setItem('bedside_active_room', rNum); showChatUi();
 }
+
 async function handleDischarge() {
     if (!confirm("Purge active streams?")) return;
     await supabaseClient.from('messages').delete().eq('sender_name', "Room " + currentRoomNumber);
     await supabaseClient.from('profiles').delete().eq('id', currentUser.id);
     handleLogout();
 }
+
 function showSettingsUi() {
     document.getElementById('denied-container').style.display = document.getElementById('auth-container').style.display = document.getElementById('chat-container').style.display = 'none';
     document.getElementById('settings-container').style.display = 'block';
     document.getElementById('room-setup-input').value = currentRoomNumber === "Unknown Room" ? "" : currentRoomNumber;
     document.getElementById('cancel-settings-btn').style.display = currentRoomNumber !== "Unknown Room" ? "block" : "none";
 }
+
 function showChatUi() {
     document.getElementById('denied-container').style.display = document.getElementById('auth-container').style.display = document.getElementById('settings-container').style.display = 'none';
     document.getElementById('chat-container').style.display = 'block';
     document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
     renderWireframeList(); setupRealtimeStream(); fetchMessages();
 }
+
 async function fetchMessages() {
     await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true }).then(({ data }) => {
         if (data) { const box = document.getElementById('chat-box'); box.innerHTML = ''; data.forEach(msg => appendMessage(msg)); }
     });
 }
+
 function appendMessage(msg) {
     const box = document.getElementById('chat-box'); if (!box) return;
     const isMe = msg.sender_name === "Room " + currentRoomNumber, w = document.createElement('div');
@@ -67,14 +105,17 @@ function appendMessage(msg) {
     w.innerHTML = `<span class="msg-meta">${msg.sender_name} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><div class="message">${msg.message_content}</div>`;
     box.appendChild(w); box.scrollTop = box.scrollHeight;
 }
+
 async function sendMessage() {
     const input = document.getElementById('message-input'); if (!input || !input.value.trim()) return;
     await supabaseClient.from('messages').insert([{ room_id: ROOM_ID, sender_name: "Room " + currentRoomNumber, message_content: input.value.trim() }]);
     input.value = ''; fetchMessages();
 }
+
 function setupRealtimeStream() {
     supabaseClient.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, () => { fetchMessages(); renderWireframeList(); }).subscribe();
 }
+
 function toggleViewMode() {
     const lf = document.getElementById('wireframe-dashboard-list'), cf = document.getElementById('chat-box-view-wrapper'), btn = document.getElementById('view-toggle-btn');
     isViewingChatBox = !isViewingChatBox;
@@ -82,10 +123,12 @@ function toggleViewMode() {
     btn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
     if (!isViewingChatBox) renderWireframeList();
 }
+
 function selectActiveTargetRoom(selRoom) {
     currentRoomNumber = selRoom; document.getElementById('room-display-tag').innerText = "Room " + selRoom;
     isViewingChatBox = false; toggleViewMode();
 }
+
 async function renderWireframeList() {
     const container = document.getElementById('wireframe-dashboard-list'); if (!container) return;
     container.innerHTML = '';
@@ -101,4 +144,10 @@ async function renderWireframeList() {
         }
     });
 }
-window.addEventListener('load', init);
+
+// Complete structural safety: Binds initialization ONLY after Document Object Model structures evaluate completely.
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+} else {
+    init();
+}
