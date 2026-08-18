@@ -2,7 +2,6 @@ let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room
 
 function init() {
     try {
-        // Enforce fallback base styling rules
         const savedTheme = localStorage.getItem('bedside_theme') || 'cyberpunk';
         document.body.className = 'theme-' + savedTheme;
         const selector = document.getElementById('theme-selector');
@@ -27,12 +26,26 @@ function init() {
 }
 
 function showAccessDenied(err) {
-    document.getElementById('auth-container').style.display = document.getElementById('chat-container').style.display = document.getElementById('settings-container').style.display = 'none';
-    document.getElementById('denied-container').style.display = 'block';
-    document.getElementById('error-debug-details').innerText = `ERROR LOG:\n${err.stack || err.message || err}`;
+    const auth = document.getElementById('auth-container');
+    const chat = document.getElementById('chat-container');
+    const settings = document.getElementById('settings-container');
+    const denied = document.getElementById('denied-container');
+    const debug = document.getElementById('error-debug-details');
+
+    if (auth) auth.style.display = 'none';
+    if (chat) chat.style.display = 'none';
+    if (settings) settings.style.display = 'none';
+    if (denied) denied.style.display = 'block';
+    if (debug) debug.innerText = `ERROR LOG:\n${err.stack || err.message || err}`;
 }
 
-function dismissAccessDenied() { document.getElementById('denied-container').style.display = 'none'; document.getElementById('auth-container').style.display = 'block'; init(); }
+function dismissAccessDenied() { 
+    const denied = document.getElementById('denied-container');
+    const auth = document.getElementById('auth-container');
+    if (denied) denied.style.display = 'none'; 
+    if (auth) auth.style.display = 'block'; 
+    init(); 
+}
 
 async function handleLogin() {
     if (!supabaseClient) return alert("Initializing connectivity...");
@@ -59,7 +72,6 @@ async function saveSettings() {
     const rNum = document.getElementById('room-setup-input').value.trim();
     if (!rNum) return alert('Enter room assignment.');
     
-    // Process theme update configuration parameters
     const themeSelector = document.getElementById('theme-selector');
     if (themeSelector) {
         localStorage.setItem('bedside_theme', themeSelector.value);
@@ -86,15 +98,32 @@ function showSettingsUi() {
 }
 
 function showChatUi() {
-    document.getElementById('denied-container').style.display = document.getElementById('auth-container').style.display = document.getElementById('settings-container').style.display = 'none';
-    document.getElementById('chat-container').style.display = 'block';
-    document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
-    renderWireframeList(); setupRealtimeStream(); fetchMessages();
+    const denied = document.getElementById('denied-container');
+    const auth = document.getElementById('auth-container');
+    const settings = document.getElementById('settings-container');
+    const chat = document.getElementById('chat-container');
+    const displayTag = document.getElementById('room-display-tag');
+
+    // CRITICAL FIX: If the DOM is too slow and elements are null, try again in 50 milliseconds
+    if (!denied || !auth || !settings || !chat || !displayTag) {
+        setTimeout(showChatUi, 50);
+        return;
+    }
+
+    denied.style.display = 'none';
+    auth.style.display = 'none';
+    settings.style.display = 'none';
+    chat.style.display = 'block';
+    displayTag.innerText = "Room " + currentRoomNumber;
+    
+    renderWireframeList(); 
+    setupRealtimeStream(); 
+    fetchMessages();
 }
 
 async function fetchMessages() {
     await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true }).then(({ data }) => {
-        if (data) { const box = document.getElementById('chat-box'); box.innerHTML = ''; data.forEach(msg => appendMessage(msg)); }
+        if (data) { const box = document.getElementById('chat-box'); if (box) { box.innerHTML = ''; data.forEach(msg => appendMessage(msg)); } }
     });
 }
 
@@ -119,14 +148,18 @@ function setupRealtimeStream() {
 function toggleViewMode() {
     const lf = document.getElementById('wireframe-dashboard-list'), cf = document.getElementById('chat-box-view-wrapper'), btn = document.getElementById('view-toggle-btn');
     isViewingChatBox = !isViewingChatBox;
-    lf.style.display = isViewingChatBox ? 'none' : 'block'; cf.style.display = isViewingChatBox ? 'block' : 'none';
-    btn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
+    if (lf) lf.style.display = isViewingChatBox ? 'none' : 'block'; 
+    if (cf) cf.style.display = isViewingChatBox ? 'block' : 'none';
+    if (btn) btn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
     if (!isViewingChatBox) renderWireframeList();
 }
 
 function selectActiveTargetRoom(selRoom) {
-    currentRoomNumber = selRoom; document.getElementById('room-display-tag').innerText = "Room " + selRoom;
-    isViewingChatBox = false; toggleViewMode();
+    currentRoomNumber = selRoom; 
+    const tag = document.getElementById('room-display-tag');
+    if (tag) tag.innerText = "Room " + selRoom;
+    isViewingChatBox = false; 
+    toggleViewMode();
 }
 
 async function renderWireframeList() {
@@ -145,7 +178,6 @@ async function renderWireframeList() {
     });
 }
 
-// Complete structural safety: Binds initialization ONLY after Document Object Model structures evaluate completely.
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
 } else {
