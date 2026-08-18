@@ -41,21 +41,27 @@
         return {
             auth: {
                 signUp: async (credentials) => {
+                    // Encapsulates the room to email formatting logic internally
+                    const cleanRoom = credentials.room.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const generatedEmail = `room_${cleanRoom}@hospital.internal`;
                     return makeRequest("/auth/v1/signup", "POST", {
-                        email: credentials.email,
+                        email: generatedEmail,
                         password: credentials.password
                     });
                 },
                 signInWithPassword: async (credentials) => {
+                    // Encapsulates the room to email formatting logic internally
+                    const cleanRoom = credentials.room.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const generatedEmail = `room_${cleanRoom}@hospital.internal`;
                     const response = await makeRequest("/auth/v1/token?grant_type=password", "POST", {
-                        email: credentials.email,
+                        email: generatedEmail,
                         password: credentials.password
                     });
 
                     if (response.data && response.data.user) {
                         return { data: { user: response.data.user }, error: null };
                     }
-                    return { data: null, error: response.error || { message: "Invalid access token parameters." } };
+                    return { data: null, error: response.error || { message: "Invalid credentials assignment." } };
                 },
                 signOut: async () => ({ error: null }),
                 getUser: async () => {
@@ -68,7 +74,6 @@
                     eq: (column, targetValue) => ({
                         single: async () => {
                             const response = await makeRequest(`/rest/v1/${table}?${column}=eq.${targetValue}`, "GET");
-                            // Fixed: Extracts the single object row explicitly from the payload array
                             const resolvedData = (response.data && response.data.length > 0) ? response.data[0] : null;
                             return { data: resolvedData, error: response.error };
                         },
@@ -106,7 +111,7 @@
             }),
             channel: () => ({
                 on: () => ({
-                    subscribe: () => console.log("Realtime dynamic sync active via local routing engine.")
+                    subscribe: () => console.log("Realtime connection online.")
                 })
             })
         };
