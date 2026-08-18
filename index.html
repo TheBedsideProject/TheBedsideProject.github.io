@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Bedside Project</title>
-    <!-- Bypasses the CDN block by sourcing from an unblocked network mirror -->
+    <!-- Loads from a stable fallback delivery mirror globally before app execution -->
     <script src="https://unpkg.com"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -12,55 +12,63 @@
 
     <div class="app-viewport">
         
-        <!-- 1. ACCESS DENIED ERROR LAYER -->
+        <!-- 1. DETAILED SYSTEM DEBUG / ACCESS DENIED OVERLAY -->
         <div id="denied-container" class="panel-view error-panel" style="display: none;">
-            <div class="error-icon">🛑</div>
-            <h2>Access Denied</h2>
+            <div class="error-accent-bar"></div>
+            <div class="error-icon">⚠️</div>
+            <h2>System Fault</h2>
             <h3>Security Authentication Clearance Required</h3>
             <p>Your session profile parameters lack the verified tokens required to connect to this bedside node configuration line.</p>
-            <button onclick="dismissAccessDenied()">Return to Login</button>
+            <div id="error-debug-details"></div>
+            <button onclick="dismissAccessDenied()">Reset Node Connection</button>
         </div>
 
-        <!-- 2. AUTHENTICATION INTERFACE -->
+        <!-- 2. LOGIN / PORTAL ACCESSIBILITY PANEL -->
         <div id="auth-container" class="panel-view">
             <h2>The Bedside Project</h2>
             <h3>Patient & Staff Portal</h3>
-            <p>Access your secure real-time messaging portal.</p>
-            <input type="text" id="auth-room" placeholder="Room Number (e.g. 104-A)">
-            <input type="password" id="auth-password" placeholder="Password">
-            <button onclick="handleLogin()">Sign In</button>
-            <button onclick="handleSignUp()" class="secondary-btn">Create an Account</button>
+            <p>Establish real-time access authentication parameters.</p>
+            <div class="input-group-label">LOGISTICAL ROOM ASSIGNMENT</div>
+            <input type="text" id="auth-room" placeholder="e.g. 104-A">
+            <div class="input-group-label">ACCESS SECURITY DECRYPTION PASSWORD</div>
+            <input type="password" id="auth-password" placeholder="••••••••">
+            <button onclick="handleLogin()">Sign In to Node</button>
+            <button onclick="handleSignUp()" class="secondary-btn">Register New Signature</button>
         </div>
 
-        <!-- 3. ACCOUNT SETTINGS INTERFACE -->
+        <!-- 3. CONFIGURATION ASSIGNMENT PANEL -->
         <div id="settings-container" class="panel-view" style="display: none;">
-            <h2>Room Configuration</h2>
-            <p>Assign your room assignment to connect to your communication line.</p>
-            <input type="text" id="room-setup-input" placeholder="Room Number (e.g. 104-A)">
-            <button onclick="saveSettings()">Save & Enter Chat</button>
-            <button onclick="handleDischarge()" class="discharge-btn">I Left the Hospital (Wipe Account)</button>
-            <button onclick="showChatUi()" id="cancel-settings-btn" class="secondary-btn" style="display:none;">Cancel</button>
+            <h2>Room Node Configuration</h2>
+            <p>Map local room assignments to build active streaming sockets.</p>
+            <div class="input-group-label">NEW NODE IDENTIFIER ASSIGNMENT</div>
+            <input type="text" id="room-setup-input" placeholder="e.g. 104-A">
+            <button onclick="saveSettings()">Apply Parameters & Launch</button>
+            <button onclick="handleDischarge()" class="discharge-btn">Purge Active Session (Wipe Account)</button>
+            <button onclick="showChatUi()" id="cancel-settings-btn" class="secondary-btn" style="display:none;">Cancel Operation</button>
         </div>
 
-        <!-- 4. MESSAGING & WIREFRAME DASHBOARD INTERFACE -->
+        <!-- 4. MAIN USER STREAMING FEED OVERLAY -->
         <div id="chat-container" style="display: none; width: 100%;">
             <div class="dashboard-header">
-                Room --</span>
+                
+                    <div class="live-pulse"></div>
+                    Node --</span>
+                </div>
                 <div class="header-actions">
-                    <button onclick="toggleViewMode()" id="view-toggle-btn" class="nav-btn primary-nav-btn">💬 Open Chat Box</button>
-                    <button onclick="showSettingsUi()" class="nav-btn">Settings</button>
-                    <button onclick="handleLogout()" class="nav-btn exit-btn">Exit</button>
+                    <button onclick="toggleViewMode()" id="view-toggle-btn" class="nav-btn primary-nav-btn">💬 Stream Live Chat</button>
+                    <button onclick="showSettingsUi()" class="nav-btn">Config</button>
+                    <button onclick="handleLogout()" class="nav-btn exit-btn">Terminate</button>
                 </div>
             </div>
             
-            <!-- Target container for the infinite wireframe room layout -->
+            <!-- Infinite Database Driven Wireframe Room Feed -->
             <div id="wireframe-dashboard-list"></div>
 
-            <!-- Single chat drawer feed wrapper -->
+            <!-- Single chat console instance frame -->
             <div id="chat-box-view-wrapper" style="display: none;">
                 <div id="chat-box"></div>
                 <div class="input-deck">
-                    <input type="text" id="message-input" placeholder="Type a message...">
+                    <input type="text" id="message-input" placeholder="Enter transmission packet data...">
                     <button onclick="sendMessage()">Send</button>
                 </div>
             </div>
@@ -68,8 +76,7 @@
 
     </div>
 
-    <!-- Active local configuration parameters and application motor loops -->
     <script src="config.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=refresh_3"></script>
 </body>
 </html>
