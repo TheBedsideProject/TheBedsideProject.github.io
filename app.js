@@ -23,13 +23,11 @@ function dismissAccessDenied() { document.getElementById('denied-container').sty
 
 async function handleLogin() {
     if (!supabaseClient) return alert("Initializing connectivity...");
-    const room = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
-    if (!room || !pass) return alert('Fill fields completely.');
+    const roomInput = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
+    if (!roomInput || !pass) return alert('Fill fields completely.');
     
-    // Automatically transforms room tags to standard medical-hash targets silently
-    const internalEmail = `room_${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
-    
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email: internalEmail, password: pass });
+    // Uses direct, clean room parameters
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ room: roomInput, password: pass });
     if (error) return alert("Login Failed: " + error.message);
     currentUser = data.user; 
     loadUserProfile();
@@ -37,13 +35,11 @@ async function handleLogin() {
 
 async function handleSignUp() {
     if (!supabaseClient) return alert("Initializing connectivity...");
-    const room = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
-    if (!room || !pass) return alert('Fill fields completely.');
+    const roomInput = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
+    if (!roomInput || !pass) return alert('Fill fields completely.');
     
-    // Automatically transforms room tags to standard medical-hash targets silently
-    const internalEmail = `room_${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
-    
-    const { error } = await supabaseClient.auth.signUp({ email: internalEmail, password: pass });
+    // Uses direct, clean room parameters
+    const { error } = await supabaseClient.auth.signUp({ room: roomInput, password: pass });
     if (error) return alert("Registration Failed: " + error.message);
     
     alert('Signature Initialized! Logging into node console...'); 
@@ -116,6 +112,16 @@ function toggleViewMode() {
     if (!isViewingChatBox) renderWireframeList();
 }
 
+// Switches your chat feed active context whenever a card is clicked
+function selectActiveTargetRoom(selectedRoom) {
+    currentRoomNumber = selectedRoom;
+    document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
+    
+    // Smoothly opens the message log console box layout automatically
+    isViewingChatBox = false;
+    toggleViewMode();
+}
+
 async function renderWireframeList() {
     const container = document.getElementById('wireframe-dashboard-list'); if (!container) return;
     container.innerHTML = '';
@@ -126,6 +132,11 @@ async function renderWireframeList() {
         const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
         const txt = (msg && msg.length > 0) ? msg.message_content : "No message history yet", row = document.createElement('div');
         row.className = 'wireframe-row';
+        row.style.cursor = 'pointer'; // Visual anchor showing it is a button
+        
+        // Attaches a click event hook directly onto your dashboard rows
+        row.onclick = () => selectActiveTargetRoom(p.room_number);
+        
         row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${txt}</div></div>`;
         container.appendChild(row);
     }
