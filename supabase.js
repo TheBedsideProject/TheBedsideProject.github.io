@@ -40,13 +40,22 @@
 
         return {
             auth: {
-                signInAnonymously: async () => {
-                    // Uses Supabase's native anonymous token authorization session engine
-                    const response = await makeRequest("/auth/v1/signup?options[anonymous]=true", "POST", {});
+                signUp: async (credentials) => {
+                    return makeRequest("/auth/v1/signup", "POST", {
+                        email: credentials.email,
+                        password: credentials.password
+                    });
+                },
+                signInWithPassword: async (credentials) => {
+                    const response = await makeRequest("/auth/v1/token?grant_type=password", "POST", {
+                        email: credentials.email,
+                        password: credentials.password
+                    });
+
                     if (response.data && response.data.user) {
                         return { data: { user: response.data.user }, error: null };
                     }
-                    return { data: null, error: response.error || { message: "Anonymous Session Initialization Failed." } };
+                    return { data: null, error: response.error || { message: "Invalid credentials." } };
                 },
                 signOut: async () => ({ error: null }),
                 getUser: async () => {
@@ -59,6 +68,7 @@
                     eq: (column, targetValue) => ({
                         single: async () => {
                             const response = await makeRequest(`/rest/v1/${table}?${column}=eq.${targetValue}`, "GET");
+                            // FIXED: Safely unwraps the array and returns a single plain object
                             const resolvedData = (response.data && response.data.length > 0) ? response.data[0] : null;
                             return { data: resolvedData, error: response.error };
                         },
@@ -96,7 +106,7 @@
             }),
             channel: () => ({
                 on: () => ({
-                    subscribe: () => console.log("Realtime dynamic sync active.")
+                    subscribe: () => console.log("Sync online")
                 })
             })
         };
