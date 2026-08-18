@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Bedside Project</title>
-    <!-- Loads from an unblocked network delivery node right inside the header structure -->
-    <script src="https://unpkg.com"></script>
+    <!-- Loads locally from your own file tree path to bypass CDN firewalls -->
+    <script src="supabase.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,7 +23,7 @@
             <button onclick="dismissAccessDenied()">Reset Node Connection</button>
         </div>
 
-        <!-- 2. LOGIN ACCESSIBILITY PORTAL (Swapped Email for Room Number Assignment) -->
+        <!-- 2. LOGIN PORTAL -->
         <div id="auth-container" class="panel-view">
             <h2>The Bedside Project</h2>
             <h3>Patient & Staff Portal</h3>
@@ -47,7 +47,7 @@
             <button onclick="showChatUi()" id="cancel-settings-btn" class="secondary-btn" style="display:none;">Cancel Operation</button>
         </div>
 
-        <!-- 4. MAIN USER STREAMING FEED OVERLAY -->
+        <!-- 4. MESSAGING & DASHBOARD FEED -->
         <div id="chat-container" style="display: none; width: 100%;">
             <div class="dashboard-header">
                 
@@ -75,6 +75,6 @@
     </div>
 
     <script src="config.js"></script>
-    <script src="app.js?v=force_refresh_101"></script>
+    <script src="app.js?v=local_bundle_refresh"></script>
 </body>
 </html>
