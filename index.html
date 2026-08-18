@@ -29,75 +29,25 @@
     </div>
 
     <script>
-        // --- 1. DYNAMICALLY LOAD THE SUPABASE LIBRARY WITHOUT LINKS ---
+        // --- 1. CONFIGURATION VARIABLES (Global Scope) ---
+        const PROJECT_ID = 'gxfkjcsvbwfzwkntsnbz';
+        const SUPABASE_URL = 'https' + '://' + PROJECT_ID + '.supabase' + '.co';
+        const SUPABASE_KEY = 'sb_publishable_rFYdZiqeDOkZ1yXnkOqB2Q_PgOkcb1m';
+        const ROOM_ID = 'room-101'; 
+        
+        let supabaseClient = null;
+
+        // --- 2. DYNAMICALLY LOAD THE SUPABASE LIBRARY ---
         const scriptElement = document.createElement('script');
         const jsdelivrDomain = 'cdn.' + 'jsdelivr' + '.net';
         const supabasePath = 'npm/' + '@supabase/' + 'supabase-js@2';
         scriptElement.src = 'https' + '://' + jsdelivrDomain + '/' + supabasePath;
         
         scriptElement.onload = function() {
-            startChatSystem();
-        };
-        document.head.appendChild(scriptElement);
-
-        // --- 2. MAIN APPLICATION LOGIC ---
-        function startChatSystem() {
-            // Configuration Settings
-            const PROJECT_ID = 'gxfkjcsvbwfzwkntsnbz';
-            const SUPABASE_URL = 'https' + '://' + PROJECT_ID + '.supabase' + '.co';
-            const SUPABASE_KEY = 'sb_publishable_rFYdZiqeDOkZ1yXnkOqB2Q_PgOkcb1m';
+            // Initialize client globally once downloaded
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             
-            // FIXED LINE: Used window.supabase.createClient to safely trigger initialization
-            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            const ROOM_ID = 'room-101'; // Default room for testing
-
-            // Fetch old messages from your table on load
-            async function fetchMessages() {
-                const { data, error } = await supabaseClient
-                    .from('messages')
-                    .select('*')
-                    .eq('room_id', ROOM_ID)
-                    .order('created_at', { ascending: true });
-
-                if (data) {
-                    const chatBox = document.getElementById('chat-box');
-                    chatBox.innerHTML = ''; 
-                    data.forEach(msg => appendMessage(msg));
-                }
-            }
-
-            // Draw message inside visual window
-            function appendMessage(msg) {
-                const chatBox = document.getElementById('chat-box');
-                const div = document.createElement('div');
-                div.className = 'message';
-                div.innerHTML = `<span class="sender">Room ${msg.sender_name}:</span> ${msg.message_content}`;
-                chatBox.appendChild(div);
-                chatBox.scrollTop = chatBox.scrollHeight; 
-            }
-
-            // Expose the click action to the global window environment
-            window.sendMessage = async function() {
-                const nameInput = document.getElementById('name-input');
-                const messageInput = document.getElementById('message-input');
-                
-                if (!nameInput.value || !messageInput.value) return alert('Please enter your room number and a message');
-
-                const { error } = await supabaseClient
-                    .from('messages')
-                    .insert([
-                        { room_id: ROOM_ID, sender_name: nameInput.value, message_content: messageInput.value }
-                    ]);
-
-                if (!error) {
-                    messageInput.value = ''; 
-                } else {
-                    console.error("Database Insert Error:", error);
-                    alert("Database Error: Could not send message. Verify your RLS settings match.");
-                }
-            };
-
-            // Setup instant stream listener
+            // Set up real-time event listener
             supabaseClient
                 .channel('public:messages')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, payload => {
@@ -105,8 +55,60 @@
                 })
                 .subscribe();
 
-            // Run initial fetch
+            // Load original message history
             fetchMessages();
+        };
+        document.head.appendChild(scriptElement);
+
+        // --- 3. CORE APPLICATION FUNCTIONS ---
+        
+        // Fetch old messages from your table on load
+        async function fetchMessages() {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('messages')
+                .select('*')
+                .eq('room_id', ROOM_ID)
+                .order('created_at', { ascending: true });
+
+            if (data) {
+                const chatBox = document.getElementById('chat-box');
+                chatBox.innerHTML = ''; 
+                data.forEach(msg => appendMessage(msg));
+            }
+        }
+
+        // Draw message inside visual window
+        function appendMessage(msg) {
+            const chatBox = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerHTML = `<span class="sender">Room ${msg.sender_name}:</span> ${msg.message_content}`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight; 
+        }
+
+        // Send action explicitly accessible to your HTML button layout
+        async function sendMessage() {
+            if (!supabaseClient) return alert('System initializing, please wait a brief moment.');
+            
+            const nameInput = document.getElementById('name-input');
+            const messageInput = document.getElementById('message-input');
+            
+            if (!nameInput.value || !messageInput.value) return alert('Please enter your room number and a message');
+
+            const { error } = await supabaseClient
+                .from('messages')
+                .insert([
+                    { room_id: ROOM_ID, sender_name: nameInput.value, message_content: messageInput.value }
+                ]);
+
+            if (!error) {
+                messageInput.value = ''; 
+            } else {
+                console.error("Database Insert Error:", error);
+                alert("Database Error: Text failed to send. Verify table structure.");
+            }
         }
     </script>
 </body>
