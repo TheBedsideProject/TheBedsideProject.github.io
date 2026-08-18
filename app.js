@@ -1,140 +1,78 @@
-let supabaseClient = null;
-let currentUser = null;
-let currentRoomNumber = "Unknown Room";
-let isViewingChatBox = false;
-
+let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room", isViewingChatBox = false;
 const scriptElement = document.createElement('script');
-const jsdelivrDomain = 'cdn.' + 'jsdelivr' + '.net';
-const supabasePath = 'npm/' + '@supabase/' + 'supabase-js@2';
-scriptElement.src = 'https' + '://' + jsdelivrDomain + '/' + supabasePath;
-
-scriptElement.onload = function() {
+scriptElement.src = 'https://jsdelivr.net';
+scriptElement.onload = () => {
     try {
-        if (window.supabase && typeof window.supabase.createClient === 'function') {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            checkCurrentUser();
-        } else {
-            showAccessDenied();
-        }
-    } catch (e) {
-        console.error("Initialization failure:", e);
-        showAccessDenied();
-    }
+        if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js missing or loaded out of order");
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        checkCurrentUser();
+    } catch (e) { showAccessDenied(e); }
 };
-
-scriptElement.onerror = function() {
-    showAccessDenied();
-};
-
+scriptElement.onerror = () => showAccessDenied(new Error("CDN network block"));
 document.head.appendChild(scriptElement);
-
-function showAccessDenied() {
+function showAccessDenied(err) {
     document.getElementById('auth-container').style.display = 'none';
     document.getElementById('chat-container').style.display = 'none';
     document.getElementById('settings-container').style.display = 'none';
-    document.getElementById('denied-container').style.display = 'block';
+    const deniedBox = document.getElementById('denied-container');
+    deniedBox.style.display = 'block';
+    let debugBox = document.getElementById('error-debug-details');
+    if (!debugBox) {
+        debugBox = document.createElement('pre');
+        debugBox.id = 'error-debug-details';
+        debugBox.style = 'margin:15px 0;padding:10px;background:#000;color:#ff4d4d;font-size:11px;text-align:left;border:2px solid red;white-space:pre-wrap;';
+        deniedBox.appendChild(debugBox);
+    }
+    debugBox.innerText = `ERROR LOG:\n${err.stack || err.message || err}`;
 }
-
 function dismissAccessDenied() {
     document.getElementById('denied-container').style.display = 'none';
     document.getElementById('auth-container').style.display = 'block';
 }
-
 async function handleSignUp() {
-    if (!supabaseClient) {
-        alert("Database connection is still initializing. Please wait a second.");
-        return;
-    }
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
+    if (!supabaseClient) return alert("Initializing...");
+    const email = document.getElementById('auth-email').value, password = document.getElementById('auth-password').value;
     if (!email || !password) return alert('Fill fields completely.');
-    
-    const { data, error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) {
-        return alert("Registration Failed: " + error.message);
-    }
+    const { error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) return alert("Sign Up Error: " + error.message);
     alert('Account created! Try logging in.');
 }
-
 async function handleLogin() {
-    if (!supabaseClient) {
-        alert("Database connection is still initializing. Please wait a second.");
-        return;
-    }
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
+    if (!supabaseClient) return alert("Initializing...");
+    const email = document.getElementById('auth-email').value, password = document.getElementById('auth-password').value;
     if (!email || !password) return alert('Fill fields completely.');
-    
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) {
-        return alert("Login Failed: " + error.message);
-    }
+    if (error) return alert("Login Error: " + error.message);
     currentUser = data.user;
     loadUserProfile();
 }
-
 async function handleLogout() {
-    if (!supabaseClient) return location.reload();
     await supabaseClient.auth.signOut();
     location.reload();
 }
-
 async function checkCurrentUser() {
-    if (!supabaseClient) return;
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) {
-            currentUser = user;
-            loadUserProfile();
-        }
-    } catch (e) {
-        console.log("No active user session detected on load.");
-    }
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (user) { currentUser = user; loadUserProfile(); }
 }
-
 async function loadUserProfile() {
-    if (!supabaseClient || !currentUser) return;
-    const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('room_number')
-        .eq('id', currentUser.id)
-        .single();
-
-    if (error) {
-        showSettingsUi();
-        return;
-    }
-
-    if (data && data.room_number) {
-        currentRoomNumber = data.room_number;
-        showChatUi();
-    } else {
-        showSettingsUi();
-    }
+    const { data, error } = await supabaseClient.from('profiles').select('room_number').eq('id', currentUser.id).single();
+    if (error) return showSettingsUi();
+    if (data && data.room_number) { currentRoomNumber = data.room_number; showChatUi(); } else { showSettingsUi(); }
 }
-
 async function saveSettings() {
     const roomNum = document.getElementById('room-setup-input').value;
     if (!roomNum) return alert('Please enter your room assignment.');
-
-    const { error } = await supabaseClient
-        .from('profiles')
-        .upsert({ id: currentUser.id, room_number: roomNum, updated_at: new Date() });
-
+    const { error } = await supabaseClient.from('profiles').upsert({ id: currentUser.id, room_number: roomNum, updated_at: new Date() });
     if (error) return alert("Save Error: " + error.message);
     currentRoomNumber = roomNum;
     showChatUi();
 }
-
 async function handleDischarge() {
-    const confirmAction = confirm("Discharge profile execution: This completely purges logs.");
-    if (!confirmAction) return;
-
+    if (!confirm("Purge all live message logs?")) return;
     await supabaseClient.from('messages').delete().eq('sender_name', "Room " + currentRoomNumber);
     await supabaseClient.from('profiles').delete().eq('id', currentUser.id);
     handleLogout();
 }
-
 function showSettingsUi() {
     document.getElementById('denied-container').style.display = 'none';
     document.getElementById('auth-container').style.display = 'none';
@@ -143,140 +81,59 @@ function showSettingsUi() {
     document.getElementById('room-setup-input').value = currentRoomNumber === "Unknown Room" ? "" : currentRoomNumber;
     document.getElementById('cancel-settings-btn').style.display = currentRoomNumber !== "Unknown Room" ? "block" : "none";
 }
-
 function showChatUi() {
     document.getElementById('denied-container').style.display = 'none';
     document.getElementById('auth-container').style.display = 'none';
     document.getElementById('settings-container').style.display = 'none';
     document.getElementById('chat-container').style.display = 'block';
     document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
-    
-    renderWireframeList();
-    setupRealtimeStream();
-    fetchMessages();
+    renderWireframeList(); setupRealtimeStream(); fetchMessages();
 }
-
 async function fetchMessages() {
-    const { data } = await supabaseClient
-        .from('messages')
-        .select('*')
-        .eq('room_id', ROOM_ID)
-        .order('created_at', { ascending: true });
-
-    if (data) {
-        const chatBox = document.getElementById('chat-box');
-        chatBox.innerHTML = ''; 
-        data.forEach(msg => appendMessage(msg));
-    }
+    const { data } = await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true });
+    if (data) { document.getElementById('chat-box').innerHTML = ''; data.forEach(msg => appendMessage(msg)); }
 }
-
 function appendMessage(msg) {
     const chatBox = document.getElementById('chat-box');
     if (!chatBox) return;
-    const targetName = "Room " + currentRoomNumber;
-    const isMe = msg.sender_name === targetName;
-    
-    const wrapper = document.createElement('div');
+    const isMe = msg.sender_name === "Room " + currentRoomNumber, wrapper = document.createElement('div');
     wrapper.className = `message-wrapper ${isMe ? 'me' : 'them'}`;
-    
-    const timeString = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    
-    wrapper.innerHTML = `
-        <span class="msg-meta">${msg.sender_name} • ${timeString}</span>
-        <div class="message">${msg.message_content}</div>
-    `;
-    
-    chatBox.appendChild(wrapper);
-    chatBox.scrollTop = chatBox.scrollHeight; 
+    wrapper.innerHTML = `<span class="msg-meta">${msg.sender_name} • ${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span><div class="message">${msg.message_content}</div>`;
+    chatBox.appendChild(wrapper); chatBox.scrollTop = chatBox.scrollHeight;
 }
-
 async function sendMessage() {
-    const messageInput = document.getElementById('message-input');
-    if (!messageInput || !messageInput.value) return;
-
-    const { error } = await supabaseClient
-        .from('messages')
-        .insert([
-            { room_id: ROOM_ID, sender_name: "Room " + currentRoomNumber, message_content: messageInput.value }
-        ]);
-
-    if (!error) {
-        messageInput.value = ''; 
-    }
+    const input = document.getElementById('message-input');
+    if (!input || !input.value) return;
+    const { error } = await supabaseClient.from('messages').insert([{ room_id: ROOM_ID, sender_name: "Room " + currentRoomNumber, message_content: input.value }]);
+    if (!error) input.value = '';
 }
-
 function setupRealtimeStream() {
-    supabaseClient
-        .channel('public:messages')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, payload => {
-            appendMessage(payload.new);
-            renderWireframeList();
-        })
-        .subscribe();
+    supabaseClient.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, () => {
+        fetchMessages(); renderWireframeList();
+    }).subscribe();
 }
-
 function toggleViewMode() {
-    const listFeed = document.getElementById('wireframe-dashboard-list');
-    const chatFeed = document.getElementById('chat-box-view-wrapper');
-    const toggleBtn = document.getElementById('view-toggle-btn');
-
-    if (!isViewingChatBox) {
-        listFeed.style.display = 'none';
-        chatFeed.style.display = 'block';
-        toggleBtn.innerText = "📋 View Room List";
-        isViewingChatBox = true;
-    } else {
-        listFeed.style.display = 'block';
-        chatFeed.style.display = 'none';
-        toggleBtn.innerText = "💬 Open Chat Box";
-        isViewingChatBox = false;
-        renderWireframeList();
-    }
+    const listFeed = document.getElementById('wireframe-dashboard-list'), chatFeed = document.getElementById('chat-box-view-wrapper'), toggleBtn = document.getElementById('view-toggle-btn');
+    isViewingChatBox = !isViewingChatBox;
+    listFeed.style.display = isViewingChatBox ? 'none' : 'block';
+    chatFeed.style.display = isViewingChatBox ? 'block' : 'none';
+    toggleBtn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
+    if (!isViewingChatBox) renderWireframeList();
 }
-
 async function renderWireframeList() {
     const listContainer = document.getElementById('wireframe-dashboard-list');
     if (!listContainer) return;
-    listContainer.innerHTML = ''; 
-
+    listContainer.innerHTML = '';
     try {
-        const { data: allProfiles, error: profileError } = await supabaseClient
-            .from('profiles')
-            .select('room_number')
-            .order('room_number', { ascending: true });
-
-        if (profileError || !allProfiles) {
-            listContainer.innerHTML = '<div class="wireframe-row"><div class="meta-block"><div class="room-heading">Establishing profiles...</div></div></div>';
-            return;
-        }
-
-        for (const profile of allProfiles) {
-            if (!profile.room_number) continue;
-
-            let previewText = "No message history yet";
-            const { data: lastMsgData } = await supabaseClient
-                .from('messages')
-                .select('message_content')
-                .eq('sender_name', "Room " + profile.room_number)
-                .order('created_at', { ascending: false })
-                .limit(1);
-
-            if (lastMsgData && lastMsgData.length > 0) {
-                previewText = lastMsgData.message_content;
-            }
-
-            const row = document.createElement('div');
+        const { data: profiles } = await supabaseClient.from('profiles').select('room_number').order('room_number', { ascending: true });
+        if (!profiles) return;
+        for (const p of profiles) {
+            if (!p.room_number) continue;
+            const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
+            const text = msg && msg.length > 0 ? msg.message_content : "No message history yet", row = document.createElement('div');
             row.className = 'wireframe-row';
-            row.innerHTML = `
-                <div class="status-indicator"></div>
-                <div class="meta-block">
-                    <div class="room-heading">Room ${profile.room_number}</div>
-                    <div class="last-transmission-text">${previewText}</div>
-                </div>
-            `;
+            row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${text}</div></div>`;
             listContainer.appendChild(row);
         }
-    } catch (e) {
-        console.error(e);
-    }
+    } catch (e) { console.error(e); }
 }
