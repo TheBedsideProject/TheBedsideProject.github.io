@@ -3,7 +3,7 @@ let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room
 function init() {
     try {
         if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-            throw new Error("Supabase library script was blocked or failed to mount onto the window layer.");
+            throw new Error("Supabase library script failed to load locally. Check script paths.");
         }
         if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js tokens missing or out of order.");
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -46,7 +46,7 @@ async function handleSignUp() {
 }
 
 function handleLogout() { 
-    supabaseClient.auth.signOut().then(() => location.reload()); 
+    location.reload(); 
 }
 
 async function loadUserProfile() {
@@ -123,7 +123,7 @@ async function renderWireframeList() {
     for (const p of profiles) {
         if (!p.room_number) continue;
         const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
-        const text = (msg && msg.length > 0) ? msg[0].message_content : "No message history yet";
+        const text = (msg && msg.length > 0) ? msg.message_content : "No message history yet";
         const row = document.createElement('div');
         row.className = 'wireframe-row';
         row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${text}</div></div>`;
