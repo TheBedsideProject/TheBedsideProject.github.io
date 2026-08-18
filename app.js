@@ -39,7 +39,7 @@ async function handleSignUp() {
     alert('Signature Initialized! Logging in...'); handleLogin();
 }
 
-function handleLogout() { supabaseClient.auth.signOut().then(() => location.reload()); }
+function handleLogout() { location.reload(); }
 
 async function loadUserProfile() {
     const { data } = await supabaseClient.from('profiles').select('room_number').eq('id', currentUser.id).single();
@@ -81,10 +81,10 @@ async function fetchMessages() {
 
 function appendMessage(msg) {
     const box = document.getElementById('chat-box'); if (!box) return;
-    const isMe = msg.sender_name === "Room " + currentRoomNumber, w = document.createElement('div');
-    w.className = `message-wrapper ${isMe ? 'me' : 'them'}`;
-    w.innerHTML = `<span class="msg-meta">${msg.sender_name} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><div class="message">${msg.message_content}</div>`;
-    box.appendChild(w); box.scrollTop = box.scrollHeight;
+    const isMe = msg.sender_name === "Room " + currentRoomNumber, wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${isMe ? 'me' : 'them'}`;
+    wrapper.innerHTML = `<span class="msg-meta">${msg.sender_name} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><div class="message">${msg.message_content}</div>`;
+    box.appendChild(wrapper); box.scrollTop = box.scrollHeight;
 }
 
 async function sendMessage() {
@@ -98,10 +98,10 @@ function setupRealtimeStream() {
 }
 
 function toggleViewMode() {
-    const lf = document.getElementById('wireframe-dashboard-list'), cf = document.getElementById('chat-box-view-wrapper'), btn = document.getElementById('view-toggle-btn');
+    const lf = document.getElementById('wireframe-dashboard-list'), chatFeed = document.getElementById('chat-box-view-wrapper'), toggleBtn = document.getElementById('view-toggle-btn');
     isViewingChatBox = !isViewingChatBox;
-    lf.style.display = isViewingChatBox ? 'none' : 'block'; cf.style.display = isViewingChatBox ? 'block' : 'none';
-    btn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
+    lf.style.display = isViewingChatBox ? 'none' : 'block'; chatFeed.style.display = isViewingChatBox ? 'block' : 'none';
+    toggleBtn.innerText = isViewingChatBox ? "📋 View Room List" : "💬 Open Chat Box";
     if (!isViewingChatBox) renderWireframeList();
 }
 
