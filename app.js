@@ -1,18 +1,21 @@
 let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room", isViewingChatBox = false;
 
-function initSupabase() {
-    try {
-        if (typeof SUPABASE_URL === 'undefined') {
-            throw new Error("Initialization Aborted: config.js is missing or loaded out of order. Ensure database token arrays are assigned correctly.");
+function verifyAndStart() {
+    let checkCount = 0;
+    const interval = setInterval(() => {
+        checkCount++;
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+            clearInterval(interval);
+            try {
+                if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js missing or loaded out of order");
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                checkCurrentUser();
+            } catch (e) { showAccessDenied(e); }
+        } else if (checkCount > 50) {
+            clearInterval(interval);
+            showAccessDenied(new Error("Supabase engine global instantiation failed or timed out. Check your script tag order."));
         }
-        if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-            throw new Error("Library Reference Fault: window.supabase could not be resolved. The resource payload link may have been modified or intercepted.");
-        }
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        checkCurrentUser();
-    } catch (e) { 
-        showAccessDenied(e); 
-    }
+    }, 100);
 }
 
 function showAccessDenied(err) {
@@ -21,21 +24,24 @@ function showAccessDenied(err) {
     document.getElementById('settings-container').style.display = 'none';
     const deniedBox = document.getElementById('denied-container');
     deniedBox.style.display = 'block';
-    
     let debugBox = document.getElementById('error-debug-details');
-    if (debugBox) {
-        debugBox.innerText = `LOG OUTLINE:\n${err.stack || err.message || err}`;
+    if (!debugBox) {
+        debugBox = document.createElement('pre');
+        debugBox.id = 'error-debug-details';
+        debugBox.style = 'margin:15px 0;padding:10px;background:#000;color:#ff4d4d;font-size:11px;text-align:left;border:2px solid red;white-space:pre-wrap;';
+        deniedBox.appendChild(debugBox);
     }
+    debugBox.innerText = `ERROR LOG:\n${err.stack || err.message || err}`;
 }
 
 function dismissAccessDenied() {
     document.getElementById('denied-container').style.display = 'none';
     document.getElementById('auth-container').style.display = 'block';
-    initSupabase();
+    verifyAndStart();
 }
 
 async function handleSignUp() {
-    if (!supabaseClient) return alert("System initializing... reload and try again.");
+    if (!supabaseClient) return alert("Initializing connection...");
     const room = document.getElementById('auth-room').value.trim(), password = document.getElementById('auth-password').value;
     if (!room || !password) return alert('Fill fields completely.');
     const email = `${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
@@ -45,7 +51,7 @@ async function handleSignUp() {
 }
 
 async function handleLogin() {
-    if (!supabaseClient) return alert("System initializing... reload and try again.");
+    if (!supabaseClient) return alert("Initializing connection...");
     const room = document.getElementById('auth-room').value.trim(), password = document.getElementById('auth-password').value;
     if (!room || !password) return alert('Fill fields completely.');
     const email = `${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
@@ -159,4 +165,4 @@ async function renderWireframeList() {
     } catch (e) { console.error(e); }
 }
 
-window.addEventListener('DOMContentLoaded', initSupabase);
+window.addEventListener('load', verifyAndStart);
