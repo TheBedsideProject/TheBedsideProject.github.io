@@ -25,20 +25,29 @@ async function handleLogin() {
     if (!supabaseClient) return alert("Initializing connectivity...");
     const room = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
     if (!room || !pass) return alert('Fill fields completely.');
-    const email = `${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
+    
+    // Automatically transforms room tags to standard medical-hash targets silently
+    const internalEmail = `room_${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
+    
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email: internalEmail, password: pass });
     if (error) return alert("Login Failed: " + error.message);
-    currentUser = data.user; loadUserProfile();
+    currentUser = data.user; 
+    loadUserProfile();
 }
 
 async function handleSignUp() {
     if (!supabaseClient) return alert("Initializing connectivity...");
     const room = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
     if (!room || !pass) return alert('Fill fields completely.');
-    const email = `${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
-    const { error } = await supabaseClient.auth.signUp({ email, password: pass });
+    
+    // Automatically transforms room tags to standard medical-hash targets silently
+    const internalEmail = `room_${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
+    
+    const { error } = await supabaseClient.auth.signUp({ email: internalEmail, password: pass });
     if (error) return alert("Registration Failed: " + error.message);
-    alert('Signature Initialized! Logging in...'); handleLogin();
+    
+    alert('Signature Initialized! Logging into node console...'); 
+    handleLogin();
 }
 
 function handleLogout() { location.reload(); }
