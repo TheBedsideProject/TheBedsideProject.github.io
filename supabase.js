@@ -59,7 +59,6 @@
                 },
                 signOut: async () => ({ error: null }),
                 getUser: async () => {
-                    // Safe lookup matches the engine state safely inside app.js layout wrappers
                     const activeUser = typeof currentUser !== 'undefined' ? currentUser : null;
                     return { data: { user: activeUser }, error: null };
                 }
@@ -69,6 +68,7 @@
                     eq: (column, targetValue) => ({
                         single: async () => {
                             const response = await makeRequest(`/rest/v1/${table}?${column}=eq.${targetValue}`, "GET");
+                            // Fixed: Extracts the single object row explicitly from the payload array
                             const resolvedData = (response.data && response.data.length > 0) ? response.data[0] : null;
                             return { data: resolvedData, error: response.error };
                         },
