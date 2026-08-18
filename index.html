@@ -47,13 +47,13 @@
             const SUPABASE_URL = 'https' + '://' + PROJECT_ID + '.supabase' + '.co';
             const SUPABASE_KEY = 'sb_publishable_rFYdZiqeDOkZ1yXnkOqB2Q_PgOkcb1m';
             
-            // CONNECT TO DATABASE USING THE GLOBAL WINDOW DEFINITION
-            const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            // FIXED LINE: Used window.supabase.createClient to safely trigger initialization
+            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const ROOM_ID = 'room-101'; // Default room for testing
 
             // Fetch old messages from your table on load
             async function fetchMessages() {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('messages')
                     .select('*')
                     .eq('room_id', ROOM_ID)
@@ -83,7 +83,7 @@
                 
                 if (!nameInput.value || !messageInput.value) return alert('Please enter your room number and a message');
 
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('messages')
                     .insert([
                         { room_id: ROOM_ID, sender_name: nameInput.value, message_content: messageInput.value }
@@ -93,11 +93,12 @@
                     messageInput.value = ''; 
                 } else {
                     console.error("Database Insert Error:", error);
+                    alert("Database Error: Could not send message. Verify your RLS settings match.");
                 }
             };
 
             // Setup instant stream listener
-            supabase
+            supabaseClient
                 .channel('public:messages')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, payload => {
                     appendMessage(payload.new);
