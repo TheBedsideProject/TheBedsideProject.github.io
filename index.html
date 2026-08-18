@@ -19,12 +19,12 @@
             <button onclick="dismissAccessDenied()">Return to Login</button>
         </div>
 
-        <!-- 2. AUTHENTICATION INTERFACE -->
+        <!-- 2. AUTHENTICATION INTERFACE (Swapped Email for Room Number) -->
         <div id="auth-container" class="panel-view">
             <h2>The Bedside Project</h2>
             <h3>Patient & Staff Portal</h3>
             <p>Access your secure real-time messaging portal.</p>
-            <input type="email" id="auth-email" placeholder="Email address">
+            <input type="text" id="auth-room" placeholder="Room Number (e.g. 104-A)">
             <input type="password" id="auth-password" placeholder="Password">
             <button onclick="handleLogin()">Sign In</button>
             <button onclick="handleSignUp()" class="secondary-btn">Create an Account</button>
@@ -51,9 +51,7 @@
                 </div>
             </div>
             
-            <div id="wireframe-dashboard-list">
-                <!-- Row nodes are fed dynamically through runtime scripts -->
-            </div>
+            <div id="wireframe-dashboard-list"></div>
 
             <div id="chat-box-view-wrapper" style="display: none;">
                 <div id="chat-box"></div>
