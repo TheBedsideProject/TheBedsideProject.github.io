@@ -7,7 +7,15 @@ function init() {
         }
         if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js credentials could not be loaded.");
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        supabaseClient.auth.getUser().then(({ data }) => { if (data?.user) { currentUser = data.user; loadUserProfile(); } });
+        
+        // Checks local storage properties to see if an anonymous room is active
+        const savedRoom = localStorage.getItem('bedside_active_room');
+        const savedUser = localStorage.getItem('bedside_active_user');
+        if (savedRoom && savedUser) {
+            currentRoomNumber = savedRoom;
+            currentUser = JSON.parse(savedUser);
+            showChatUi();
+        }
     } catch(e) { 
         showAccessDenied(e); 
     }
@@ -23,49 +31,43 @@ function dismissAccessDenied() { document.getElementById('denied-container').sty
 
 async function handleLogin() {
     if (!supabaseClient) return alert("Initializing connectivity...");
-    const roomInput = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
-    if (!roomInput || !pass) return alert('Fill fields completely.');
+    const roomInput = document.getElementById('auth-room').value.trim();
+    if (!roomInput) return alert('Please enter your room identifier assignment.');
     
-    // Direct, smart pass-through wrapper catches rate limits
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ room: roomInput, password: pass });
+    // Fires native anonymous access token bypassing email rate restrictions
+    const { data, error } = await supabaseClient.auth.signInAnonymously();
+    if (error) return alert("Connection Failed: " + error.message);
     
-    if (error) {
-        // If login fails because user doesn't exist, it handles creation cleanly
-        const signUpResult = await supabaseClient.auth.signUp({ room: roomInput, password: pass });
-        if (signUpResult.error) {
-            return alert("Access Fault: " + signUpResult.error.message);
-        }
-        
-        // Immediate login retry after dynamic creation pass
-        const retryResult = await supabaseClient.auth.signInWithPassword({ room: roomInput, password: pass });
-        if (retryResult.error) return alert("Signature generated. Re-enter password parameter to connect.");
-        
-        currentUser = retryResult.data.user;
-        loadUserProfile();
-        return;
-    }
+    currentUser = data.user;
+    currentRoomNumber = roomInput;
     
-    currentUser = data.user; 
-    loadUserProfile();
+    // Persists session context parameters locally on the machine
+    localStorage.setItem('bedside_active_room', currentRoomNumber);
+    localStorage.setItem('bedside_active_user', JSON.stringify(currentUser));
+    
+    // Creates a reference profile row mapping your room number cleanly to your session token
+    await supabaseClient.from('profiles').upsert({ id: currentUser.id, room_number: currentRoomNumber, updated_at: new Date() });
+    
+    showChatUi();
 }
 
 async function handleSignUp() {
-    // Both interface targets now share the smart pass-through method to completely prevent rate lockouts
+    // Both entry targets now point to anonymous generation to drop emails completely
     handleLogin();
 }
 
-function handleLogout() { location.reload(); }
-
-async function loadUserProfile() {
-    const { data } = await supabaseClient.from('profiles').select('room_number').eq('id', currentUser.id).single();
-    if (data?.room_number) { currentRoomNumber = data.room_number; showChatUi(); } else { showSettingsUi(); }
+function handleLogout() { 
+    localStorage.clear();
+    location.reload(); 
 }
 
 async function saveSettings() {
     const rNum = document.getElementById('room-setup-input').value.trim();
     if (!rNum) return alert('Enter room assignment.');
     await supabaseClient.from('profiles').upsert({ id: currentUser.id, room_number: rNum, updated_at: new Date() });
-    currentRoomNumber = rNum; showChatUi();
+    currentRoomNumber = rNum;
+    localStorage.setItem('bedside_active_room', currentRoomNumber);
+    showChatUi();
 }
 
 async function handleDischarge() {
