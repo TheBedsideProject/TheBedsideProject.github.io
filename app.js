@@ -1,6 +1,7 @@
 let supabaseClient = null;
 let currentUser = null;
 let currentRoomNumber = "Unknown Room";
+let isViewingChatBox = false; // View state tracking flag
 
 // --- 1. DYNAMICALLY LOAD THE SUPABASE LIBRARY ---
 const scriptElement = document.createElement('script');
@@ -103,6 +104,9 @@ function showChatUi() {
     document.getElementById('chat-container').style.display = 'block';
     document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
     
+    // Injects structural list content into wireframe overlay panel
+    renderWireframeList();
+    
     setupRealtimeStream();
     fetchMessages();
 }
@@ -165,4 +169,48 @@ function setupRealtimeStream() {
             appendMessage(payload.new);
         })
         .subscribe();
+}
+
+// --- 6. VIEW SEPARATOR CONTROLS (WIREFRAME ENGINE LAYER) ---
+function toggleViewMode() {
+    const listFeed = document.getElementById('wireframe-dashboard-list');
+    const chatFeed = document.getElementById('chat-box-view-wrapper');
+    const toggleBtn = document.getElementById('view-toggle-btn');
+
+    if (!isViewingChatBox) {
+        listFeed.style.display = 'none';
+        chatFeed.style.display = 'block';
+        toggleBtn.innerText = "📋 View Room List";
+        isViewingChatBox = true;
+    } else {
+        listFeed.style.display = 'block';
+        chatFeed.style.display = 'none';
+        toggleBtn.innerText = "💬 Open Chat Box";
+        isViewingChatBox = false;
+        renderWireframeList();
+    }
+}
+
+function renderWireframeList() {
+    const listContainer = document.getElementById('wireframe-dashboard-list');
+    listContainer.innerHTML = ''; 
+
+    // Loops rows to accurately match your image template structure
+    const schematicIndexes =;
+    schematicIndexes.forEach(index => {
+        const row = document.createElement('div');
+        row.className = 'wireframe-row';
+        
+        // Highlights the user's real room assignment context natively on the top slot
+        const displayLabel = (index === 1) ? currentRoomNumber : `${100 + index}`;
+        
+        row.innerHTML = `
+            <div class="status-indicator"></div>
+            <div class="meta-block">
+                <div class="room-heading">Room ${displayLabel}</div>
+                <div class="last-transmission-text">LAST SENT TEXT</div>
+            </div>
+        `;
+        listContainer.appendChild(row);
+    });
 }
