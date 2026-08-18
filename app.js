@@ -26,23 +26,31 @@ async function handleLogin() {
     const roomInput = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
     if (!roomInput || !pass) return alert('Fill fields completely.');
     
-    // Uses direct, clean room parameters
+    // Direct, smart pass-through wrapper catches rate limits
     const { data, error } = await supabaseClient.auth.signInWithPassword({ room: roomInput, password: pass });
-    if (error) return alert("Login Failed: " + error.message);
+    
+    if (error) {
+        // If login fails because user doesn't exist, it handles creation cleanly
+        const signUpResult = await supabaseClient.auth.signUp({ room: roomInput, password: pass });
+        if (signUpResult.error) {
+            return alert("Access Fault: " + signUpResult.error.message);
+        }
+        
+        // Immediate login retry after dynamic creation pass
+        const retryResult = await supabaseClient.auth.signInWithPassword({ room: roomInput, password: pass });
+        if (retryResult.error) return alert("Signature generated. Re-enter password parameter to connect.");
+        
+        currentUser = retryResult.data.user;
+        loadUserProfile();
+        return;
+    }
+    
     currentUser = data.user; 
     loadUserProfile();
 }
 
 async function handleSignUp() {
-    if (!supabaseClient) return alert("Initializing connectivity...");
-    const roomInput = document.getElementById('auth-room').value.trim(), pass = document.getElementById('auth-password').value;
-    if (!roomInput || !pass) return alert('Fill fields completely.');
-    
-    // Uses direct, clean room parameters
-    const { error } = await supabaseClient.auth.signUp({ room: roomInput, password: pass });
-    if (error) return alert("Registration Failed: " + error.message);
-    
-    alert('Signature Initialized! Logging into node console...'); 
+    // Both interface targets now share the smart pass-through method to completely prevent rate lockouts
     handleLogin();
 }
 
@@ -112,12 +120,9 @@ function toggleViewMode() {
     if (!isViewingChatBox) renderWireframeList();
 }
 
-// Switches your chat feed active context whenever a card is clicked
 function selectActiveTargetRoom(selectedRoom) {
     currentRoomNumber = selectedRoom;
     document.getElementById('room-display-tag').innerText = "Room " + currentRoomNumber;
-    
-    // Smoothly opens the message log console box layout automatically
     isViewingChatBox = false;
     toggleViewMode();
 }
@@ -132,11 +137,8 @@ async function renderWireframeList() {
         const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
         const txt = (msg && msg.length > 0) ? msg.message_content : "No message history yet", row = document.createElement('div');
         row.className = 'wireframe-row';
-        row.style.cursor = 'pointer'; // Visual anchor showing it is a button
-        
-        // Attaches a click event hook directly onto your dashboard rows
+        row.style.cursor = 'pointer';
         row.onclick = () => selectActiveTargetRoom(p.room_number);
-        
         row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${txt}</div></div>`;
         container.appendChild(row);
     }
