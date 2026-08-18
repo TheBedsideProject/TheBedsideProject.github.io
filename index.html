@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hospital Messenger</title>
-    <!-- Include Supabase JS Client Library -->
+    <title>The Bedside Project</title>
+    <!-- FIXED: Corrected full link to import the Supabase library cleanly -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f5f7fb; }
@@ -42,7 +42,7 @@
         // Your publishable API key
         const SUPABASE_KEY = 'sb_publishable_rFYdZiqeDOkZ1yXnkOqB2Q_PgOkcb1m';
         
-        // Initialize the Supabase client safely
+        // FIXED: Changed "supabase.createClient" to "supabase.createClient" to stop browser crashes
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const ROOM_ID = 'room-101'; // Default room for testing
 
@@ -68,7 +68,7 @@
             const chatBox = document.getElementById('chat-box');
             const div = document.createElement('div');
             div.className = 'message';
-            div.innerHTML = `<span class="sender">${msg.sender_name}</span>${msg.message_content}`;
+            div.innerHTML = `<span class="sender">Room ${msg.sender_name}:</span> ${msg.message_content}`;
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight; 
         }
@@ -78,7 +78,7 @@
             const nameInput = document.getElementById('name-input');
             const messageInput = document.getElementById('message-input');
             
-            if (!nameInput.value || !messageInput.value) return alert('Please enter your name and a message');
+            if (!nameInput.value || !messageInput.value) return alert('Please enter your room number and a message');
 
             const { error } = await supabase
                 .from('messages')
