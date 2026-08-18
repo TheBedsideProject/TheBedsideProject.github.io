@@ -1,62 +1,14 @@
-window.supabase = {
-    createClient: (u, k) => {
-        const h = { "apikey": k, "Authorization": "Bearer " + k, "Content-Type": "application/json" };
-        const c = async (url, m, b) => {
-            try {
-                const r = await fetch(url, { method: m, headers: h, body: b ? JSON.stringify(b) : null });
-                const res = await r.json();
-                return { data: r.ok ? res : null, error: r.ok ? null : { message: res?.error_description || res?.msg || "Transaction Exception" } };
-            } catch (e) {
-                return { data: null, error: e };
-            }
-        };
-        return {
-            auth: {
-                signUp: async (e) => c(`${u}/auth/v1/signup`, "POST", { email: e.email, password: e.password }),
-                signInWithPassword: async (e) => {
-                    let r = await c(`${u}/auth/v1/token?grant_type=password`, "POST", { email: e.email, password: e.password });
-                    return r.data?.user ? { data: { user: r.data.user }, error: null } : { data: null, error: { message: r.error?.message || "Invalid Parameters" } };
-                },
-                signOut: async () => ({ error: null }),
-                getUser: async () => ({ data: { user: currentUser } })
-            },
-            from: (t) => ({
-                select: (s) => ({
-                    eq: (n, o) => ({
-                        single: async () => {
-                            const res = await c(`${u}/rest/v1/${t}?${n}=eq.${o}`, "GET");
-                            return { data: (res.data && res.data.length > 0) ? res.data[0] : null };
-                        },
-                        order: (n, a) => ({
-                            limit: async (l) => {
-                                const res = await c(`${u}/rest/v1/${t}?sender_name=eq.${o}&order=${n}.desc&limit=${l}`, "GET");
-                                return { data: res.data || [] };
-                            },
-                            then: async (cb) => {
-                                const res = await c(`${u}/rest/v1/${t}?room_id=eq.${o}&order=${n}.asc`, "GET");
-                                cb({ data: res.data || [] });
-                            }
-                        })
-                    })
-                }),
-                limit: async (l) => ({ data: (await c(`${u}/rest/v1/${t}?order=created_at.desc&limit=${l}`, "GET")).data || [] }),
-                then: async (cb) => cb({ data: (await c(`${u}/rest/v1/${t}`, "GET")).data || [] }),
-                upsert: async (b) => c(`${u}/rest/v1/${t}`, "POST", b),
-                delete: () => ({ eq: (n, o) => ({ then: async (cb) => cb(await c(`${u}/rest/v1/${t}?${n}=eq.${o}`, "DELETE")) }) })
-            }),
-            channel: () => ({ on: () => ({ subscribe: () => console.log("Sync online") }) })
-        };
-    }
-};
-
 let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room", isViewingChatBox = false;
 
 function init() {
     try {
-        if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js properties missing or unassigned.");
+        if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+            throw new Error("Supabase library script was blocked or failed to mount onto the window layer.");
+        }
+        if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js tokens missing or out of order.");
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         supabaseClient.auth.getUser().then(({ data: { user } }) => { if (user) { currentUser = user; loadUserProfile(); } });
-    } catch (e) { showAccessDenied(e); }
+    } catch(e) { showAccessDenied(e); }
 }
 
 function showAccessDenied(err) {
@@ -68,22 +20,34 @@ function showAccessDenied(err) {
 function dismissAccessDenied() { document.getElementById('denied-container').style.display = 'none'; document.getElementById('auth-container').style.display = 'block'; init(); }
 
 async function handleLogin() {
+    if (!supabaseClient) return alert("Initializing connection parameters...");
     const room = document.getElementById('auth-room').value.trim(), password = document.getElementById('auth-password').value;
     if (!room || !password) return alert('Fill fields completely.');
     const email = `${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
+    
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) {
-        const sign = await supabaseClient.auth.signUp({ email, password });
-        if (sign.error) return alert("System Profile Access Fault: " + sign.error.message);
-        const retry = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (retry.error) return alert("Access initialized. Please click Sign In again to verify parameters.");
-        currentUser = retry.data.user; loadUserProfile(); return;
-    }
-    currentUser = data.user; loadUserProfile();
+    if (error) return alert("Login Failed: " + error.message);
+    
+    currentUser = data.user; 
+    loadUserProfile();
 }
 
-async function handleSignUp() { handleLogin(); }
-function handleLogout() { location.reload(); }
+async function handleSignUp() {
+    if (!supabaseClient) return alert("Initializing connection parameters...");
+    const room = document.getElementById('auth-room').value.trim(), password = document.getElementById('auth-password').value;
+    if (!room || !password) return alert('Fill fields completely.');
+    const email = `${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
+    
+    const { error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) return alert("Sign Up Failed: " + error.message);
+    
+    alert('Account created! Attempting automatic entry authentication...');
+    handleLogin();
+}
+
+function handleLogout() { 
+    supabaseClient.auth.signOut().then(() => location.reload()); 
+}
 
 async function loadUserProfile() {
     const { data } = await supabaseClient.from('profiles').select('room_number').eq('id', currentUser.id).single();
@@ -119,9 +83,8 @@ function showChatUi() {
 }
 
 async function fetchMessages() {
-    await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true }).then(({ data }) => {
-        if (data) { document.getElementById('chat-box').innerHTML = ''; data.forEach(msg => appendMessage(msg)); }
-    });
+    const { data } = await supabaseClient.from('messages').select('*').eq('room_id', ROOM_ID).order('created_at', { ascending: true });
+    if (data) { document.getElementById('chat-box').innerHTML = ''; data.forEach(msg => appendMessage(msg)); }
 }
 
 function appendMessage(msg) {
@@ -155,17 +118,17 @@ function toggleViewMode() {
 async function renderWireframeList() {
     const listContainer = document.getElementById('wireframe-dashboard-list'); if (!listContainer) return;
     listContainer.innerHTML = '';
-    await supabaseClient.from('profiles').select('room_number').order('room_number', { ascending: true }).then(async ({ data: profiles }) => {
-        if (!profiles) return;
-        for (const p of profiles) {
-            if (!p.room_number) continue;
-            const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
-            const text = (msg && msg.length > 0) ? msg[0].message_content : "No message history yet", row = document.createElement('div');
-            row.className = 'wireframe-row';
-            row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${text}</div></div>`;
-            listContainer.appendChild(row);
-        }
-    });
+    const { data: profiles } = await supabaseClient.from('profiles').select('room_number').order('room_number', { ascending: true });
+    if (!profiles) return;
+    for (const p of profiles) {
+        if (!p.room_number) continue;
+        const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
+        const text = (msg && msg.length > 0) ? msg[0].message_content : "No message history yet";
+        const row = document.createElement('div');
+        row.className = 'wireframe-row';
+        row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${text}</div></div>`;
+        listContainer.appendChild(row);
+    }
 }
 
 window.addEventListener('load', init);
