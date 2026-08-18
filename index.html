@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Bedside Project</title>
-    <!-- Link to our clean stylesheet -->
+    <!-- Links to our customized flat schematic wireframe stylesheet -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="container">
-        <h2>The Bedside Project</h2>
-
+    <div class="app-viewport">
+        
         <!-- 1. AUTHENTICATION INTERFACE -->
-        <div id="auth-container">
+        <div id="auth-container" class="panel-view">
+            <h2>The Bedside Project</h2>
             <h3>Patient & Staff Portal</h3>
             <p>Access your secure real-time messaging portal.</p>
             <input type="email" id="auth-email" placeholder="Email address">
@@ -23,35 +23,46 @@
         </div>
 
         <!-- 2. ACCOUNT SETTINGS INTERFACE -->
-        <div id="settings-container">
-            <h3>Room Configuration</h3>
+        <div id="settings-container" class="panel-view" style="display: none;">
+            <h2>Room Configuration</h2>
             <p>Assign your room assignment to connect to your communication line.</p>
             <input type="text" id="room-setup-input" placeholder="Room Number (e.g. 104-A)">
             <button onclick="saveSettings()">Save & Enter Chat</button>
             <button onclick="handleDischarge()" class="discharge-btn">I Left the Hospital (Wipe Account)</button>
-            <button onclick="showChatUi()" id="cancel-settings-btn" style="background:transparent; color:var(--text-secondary); display:none;">Cancel</button>
+            <button onclick="showChatUi()" id="cancel-settings-btn" class="secondary-btn" style="display:none;">Cancel</button>
         </div>
 
-        <!-- 3. MESSAGING INTERFACE -->
-        <div id="chat-container">
-            <div class="chat-header">
-                <span id="room-display-tag" class="room-tag">Room --</span>
+        <!-- 3. MESSAGING & WIREFRAME DASHBOARD INTERFACE -->
+        <div id="chat-container" style="display: none; width: 100%;">
+            <div class="dashboard-header">
+                Room --</span>
                 <div class="header-actions">
+                    <!-- Toggle switch lets users view the live stream box cleanly -->
+                    <button onclick="toggleViewMode()" id="view-toggle-btn" class="nav-btn primary-nav-btn">💬 Open Chat Box</button>
                     <button onclick="showSettingsUi()" class="nav-btn">Settings</button>
-                    <button onclick="handleLogout()" class="nav-btn">Exit</button>
+                    <button onclick="handleLogout()" class="nav-btn exit-btn">Exit</button>
                 </div>
             </div>
             
-            <div id="chat-box"></div>
-            
-            <div class="input-deck">
-                <input type="text" id="message-input" placeholder="Type a message...">
-                <button onclick="sendMessage()">Send</button>
+            <!-- Dynamic Grid Feed matching your exact attached image layout drawing -->
+            <div id="wireframe-dashboard-list">
+                <!-- Row nodes are fed dynamically through runtime scripts -->
+            </div>
+
+            <!-- Chat box element containing message buffers -->
+            <div id="chat-box-view-wrapper" style="display: none;">
+                <div id="chat-box"></div>
+                
+                <div class="input-deck">
+                    <input type="text" id="message-input" placeholder="Type a message...">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
             </div>
         </div>
+
     </div>
 
-    <!-- Load scripts in order: Configuration first, then core logic -->
+    <!-- Configuration fields first, followed by structural layout handler -->
     <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
