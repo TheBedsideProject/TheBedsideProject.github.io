@@ -31,16 +31,18 @@ function dismissAccessDenied() {
 }
 async function handleSignUp() {
     if (!supabaseClient) return alert("Initializing...");
-    const email = document.getElementById('auth-email').value, password = document.getElementById('auth-password').value;
-    if (!email || !password) return alert('Fill fields completely.');
+    const room = document.getElementById('auth-room').value.trim(), password = document.getElementById('auth-password').value;
+    if (!room || !password) return alert('Fill fields completely.');
+    const email = `${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
     const { error } = await supabaseClient.auth.signUp({ email, password });
     if (error) return alert("Sign Up Error: " + error.message);
     alert('Account created! Try logging in.');
 }
 async function handleLogin() {
     if (!supabaseClient) return alert("Initializing...");
-    const email = document.getElementById('auth-email').value, password = document.getElementById('auth-password').value;
-    if (!email || !password) return alert('Fill fields completely.');
+    const room = document.getElementById('auth-room').value.trim(), password = document.getElementById('auth-password').value;
+    if (!room || !password) return alert('Fill fields completely.');
+    const email = `${room.toLowerCase().replace(/[^a-z0-9]/g, '')}@bedside.project`;
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) return alert("Login Error: " + error.message);
     currentUser = data.user;
