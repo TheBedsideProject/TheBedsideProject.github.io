@@ -7,29 +7,58 @@
     <style>
         body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f5f7fb; }
         h2 { color: #2c3e50; text-align: center; }
+        
+        /* Container Boxes */
+        #auth-container { background: white; padding: 20px; border-radius: 8px; border: 1px solid #dcdde1; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 50px; }
+        #chat-container { display: none; } /* Hidden until logged in */
+        
         #chat-box { height: 350px; border: 1px solid #dcdde1; border-radius: 8px; background: white; overflow-y: scroll; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .message { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background-color: #f1f2f6; width: fit-content; max-width: 85%; }
         .sender { font-weight: bold; color: #0066cc; display: block; font-size: 14px; margin-bottom: 2px; }
+        
+        /* Inputs & Buttons */
         input, button { padding: 12px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-        #name-input { width: 100%; margin-bottom: 10px; }
+        .auth-input { width: 100%; margin-bottom: 15px; }
+        #name-input { width: 100%; margin-bottom: 10px; background-color: #e9ecef; }
         #message-input { width: 75%; }
-        button { width: 22%; background-color: #0066cc; color: white; border: none; font-weight: bold; cursor: pointer; float: right; }
+        
+        button { background-color: #0066cc; color: white; border: none; font-weight: bold; cursor: pointer; }
         button:hover { background-color: #0052a3; }
+        .auth-btn { width: 100%; margin-bottom: 10px; }
+        #send-btn { width: 22%; float: right; }
+        
+        .logout-btn { background-color: #dc3545; padding: 6px 12px; font-size: 14px; float: right; margin-top: -45px; }
+        .logout-btn:hover { background-color: #bd2130; }
     </style>
 </head>
 <body>
 
     <h2>The Bedside Project</h2>
-    <div id="chat-box"></div>
 
-    <input type="text" id="name-input" placeholder="Your room number">
-    <div style="width: 100%;">
-        <input type="text" id="message-input" placeholder="Type a message...">
-        <button onclick="sendMessage()">Send</button>
+    <!-- 1. AUTHENTICATION INTERFACE (Shown by default) -->
+    <div id="auth-container">
+        <h3 style="margin-top:0; text-align:center;">Patient & Staff Sign In</h3>
+        <input type="email" id="auth-email" class="auth-input" placeholder="Enter your email">
+        <input type="password" id="auth-password" class="auth-input" placeholder="Enter password (min 6 characters)">
+        <button onclick="handleSignUp()" class="auth-btn" style="background-color:#6c757d;">Create New Account</button>
+        <button onclick="handleLogin()" class="auth-btn">Sign In</button>
+    </div>
+
+    <!-- 2. MESSAGING INTERFACE (Hidden until Auth succeeds) -->
+    <div id="chat-container">
+        <button onclick="handleLogout()" class="logout-btn">Sign Out</button>
+        <div id="chat-box"></div>
+
+        <!-- Room number automatically locks to the user's logged-in email identifier -->
+        <input type="text" id="name-input" readonly>
+        <div style="width: 100%;">
+            <input type="text" id="message-input" placeholder="Type a secure message...">
+            <button onclick="sendMessage()" id="send-btn">Send</button>
+        </div>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION VARIABLES (Global Scope) ---
+        // --- CONFIGURATION VARIABLES ---
         const PROJECT_ID = 'gxfkjcsvbwfzwkntsnbz';
         const SUPABASE_URL = 'https' + '://' + PROJECT_ID + '.supabase' + '.co';
         const SUPABASE_KEY = 'sb_publishable_rFYdZiqeDOkZ1yXnkOqB2Q_PgOkcb1m';
@@ -37,34 +66,79 @@
         
         let supabaseClient = null;
 
-        // --- 2. DYNAMICALLY LOAD THE SUPABASE LIBRARY ---
+        // --- DYNAMICALLY LOAD THE SUPABASE LIBRARY ---
         const scriptElement = document.createElement('script');
         const jsdelivrDomain = 'cdn.' + 'jsdelivr' + '.net';
         const supabasePath = 'npm/' + '@supabase/' + 'supabase-js@2';
         scriptElement.src = 'https' + '://' + jsdelivrDomain + '/' + supabasePath;
         
         scriptElement.onload = function() {
-            // Initialize client globally once downloaded
+            // Initialize Supabase Client
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             
-            // Set up real-time event listener
-            supabaseClient
-                .channel('public:messages')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, payload => {
-                    appendMessage(payload.new);
-                })
-                .subscribe();
-
-            // Load original message history
-            fetchMessages();
+            // Check if a user is already securely logged in from a previous session
+            checkCurrentUser();
         };
         document.head.appendChild(scriptElement);
 
-        // --- 3. CORE APPLICATION FUNCTIONS ---
+        // --- AUTHENTICATION LOGIC ---
+
+        // Handle creating a new account
+        async function handleSignUp() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            if (!email || !password) return alert('Please enter both email and password');
+
+            const { data, error } = await supabaseClient.auth.signUp({ email, password });
+            if (error) return alert("Sign Up Error: " + error.message);
+            
+            alert('Account created successfully! Check your email inbox for a confirmation link, or try signing in.');
+        }
+
+        // Handle logging into an existing account
+        async function handleLogin() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            if (!email || !password) return alert('Please enter both email and password');
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) return alert("Login Error: " + error.message);
+            
+            // Success: update UI view state
+            showChatUi(data.user);
+        }
+
+        // Handle signing completely out of the app
+        async function handleLogout() {
+            await supabaseClient.auth.signOut();
+            document.getElementById('chat-container').style.display = 'none';
+            document.getElementById('auth-container').style.display = 'block';
+        }
+
+        // Monitor state to see if browser remembers the user
+        async function checkCurrentUser() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                showChatUi(user);
+            }
+        }
+
+        // Transition layout view into active chat session mode
+        function showChatUi(user) {
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('chat-container').style.display = 'block';
+            
+            // Lock the display field to the user's logged-in identity
+            document.getElementById('name-input').value = "Logged in as: " + user.email;
+
+            // Initialize real-time streams and history
+            setupRealtimeStream();
+            fetchMessages();
+        }
+
+        // --- APP LOGIC FUNCTIONS ---
         
-        // Fetch old messages from your table on load
         async function fetchMessages() {
-            if (!supabaseClient) return;
             const { data, error } = await supabaseClient
                 .from('messages')
                 .select('*')
@@ -78,24 +152,20 @@
             }
         }
 
-        // Draw message inside visual window
         function appendMessage(msg) {
             const chatBox = document.getElementById('chat-box');
             const div = document.createElement('div');
             div.className = 'message';
-            div.innerHTML = `<span class="sender">Room ${msg.sender_name}:</span> ${msg.message_content}`;
+            div.innerHTML = `<span class="sender">${msg.sender_name}:</span> ${msg.message_content}`;
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight; 
         }
 
-        // Send action explicitly accessible to your HTML button layout
         async function sendMessage() {
-            if (!supabaseClient) return alert('System initializing, please wait a brief moment.');
-            
             const nameInput = document.getElementById('name-input');
             const messageInput = document.getElementById('message-input');
             
-            if (!nameInput.value || !messageInput.value) return alert('Please enter your room number and a message');
+            if (!messageInput.value) return alert('Please type a message');
 
             const { error } = await supabaseClient
                 .from('messages')
@@ -107,8 +177,16 @@
                 messageInput.value = ''; 
             } else {
                 console.error("Database Insert Error:", error);
-                alert("Database Error: Text failed to send. Verify table structure.");
             }
+        }
+
+        function setupRealtimeStream() {
+            supabaseClient
+                .channel('public:messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` }, payload => {
+                    appendMessage(payload.new);
+                })
+                .subscribe();
         }
     </script>
 </body>
