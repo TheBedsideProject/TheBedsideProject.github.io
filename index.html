@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Bedside Project</title>
+    <!-- Loads from an unblocked network delivery node right inside the header structure -->
+    <script src="https://unpkg.com"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="app-viewport">
         
-        <!-- 1. SYSTEM ERROR CLEARANCE OVERLAY -->
+        <!-- 1. SYSTEM ERROR ERROR OVERLAY -->
         <div id="denied-container" class="panel-view error-panel" style="display: none;">
             <div class="error-accent-bar"></div>
             <div class="error-icon">⚠️</div>
@@ -21,7 +23,7 @@
             <button onclick="dismissAccessDenied()">Reset Node Connection</button>
         </div>
 
-        <!-- 2. LOGIN ACCESSIBILITY PORTAL -->
+        <!-- 2. LOGIN ACCESSIBILITY PORTAL (Swapped Email for Room Number Assignment) -->
         <div id="auth-container" class="panel-view">
             <h2>The Bedside Project</h2>
             <h3>Patient & Staff Portal</h3>
@@ -73,6 +75,6 @@
     </div>
 
     <script src="config.js"></script>
-    <script src="app.js?v=local_compiled"></script>
+    <script src="app.js?v=force_refresh_101"></script>
 </body>
 </html>
