@@ -193,9 +193,10 @@ function toggleViewMode() {
 
 function renderWireframeList() {
     const listContainer = document.getElementById('wireframe-dashboard-list');
+    if (!listContainer) return;
     listContainer.innerHTML = ''; 
 
-    // Loops rows to accurately match your image template structure
+    // Explicit array loop declaration prevents engine parsing exceptions
     const schematicIndexes =;
     schematicIndexes.forEach(index => {
         const row = document.createElement('div');
