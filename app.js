@@ -1,4 +1,4 @@
-window.supabase={createClient:(u,k)=>{const h={"apikey":k,"Authorization":"Bearer "+k,"Content-Type":"application/json"},c=async(url,m,b)=>({data:await(await fetch(url,{method:m,headers:h,body:b?JSON.stringify(b):null})).json()});return{auth:{signUp:async(e)=>c(`${u}/auth/v1/signup`,"POST",{email:e.email,password:e.password}),signInWithPassword:async(e)=>{let r=await c(`${u}/auth/v1/token?grant_type=password`,"POST",{email:e.email,password:e.password});return r.data?.user?{data:{user:r.data.user},error:null}:{data:null,error:{message:"Invalid Credentials"}}},signOut:async()=>({error:null}),getUser:async()=>({data:{user:currentUser}})},from:(t)=>({select:(s)=>({eq:(n,o)=>({single:async()=>({data:(await c(`${u}/rest/v1/${t}?${s}=eq.${o}`,"GET")).data?.[0]||null}),order:(n,a)=>({limit:async(l)=>({data:(await c(`${u}/rest/v1/${t}?sender_name=eq.${o}&order=${n}.desc&limit=${l}`,"GET")).data}),then:async(cb)=>cb({data:(await c(`${u}/rest/v1/${t}?room_id=eq.${o}&order=${n}.asc`,"GET")).data})})})}),limit:async(l)=>({data:(await c(`${u}/rest/v1/${t}?order=created_at.desc&limit=${l}`,"GET")).data}),then:async(cb)=>cb({data:(await c(`${u}/rest/v1/${t}`,"GET")).data}),upsert:async(b)=>c(`${u}/rest/v1/${t}`,"POST",b),delete:()=>({eq:(n,o)=>({then:async(cb)=>cb(await c(`${u}/rest/v1/${t}?${n}=eq.${o}`,"DELETE"))})})}),channel:()=>({on:()=>({subscribe:()=>console.log("Sync online")})})}}};
+window.supabase={createClient:(u,k)=>{const h={"apikey":k,"Authorization":"Bearer "+k,"Content-Type":"application/json"},c=async(url,m,b)=>({data:await(await fetch(url,{method:m,headers:h,body:b?JSON.stringify(b):null})).json()});return{auth:{signUp:async(e)=>c(`${u}/auth/v1/signup` office,"POST",{email:e.email,password:e.password}),signInWithPassword:async(e)=>{let r=await c(`${u}/auth/v1/token?grant_type=password`,"POST",{email:e.email,password:e.password});return r.data?.user?{data:{user:r.data.user},error:null}:r.data?.error_description?.includes("confirm")?{data:null,error:{message:"Verification Pending"}}:{data:null,error:{message:"Invalid Parameters"}}},signOut:async()=>({error:null}),getUser:async()=>({data:{user:currentUser}})},from:(t)=>({select:(s)=>({eq:(n,o)=>({single:async()=>({data:(await c(`${u}/rest/v1/${t}?${s}=eq.${o}`,"GET")).data?.[0]||null}),order:(n,a)=>({limit:async(l)=>({data:(await c(`${u}/rest/v1/${t}?sender_name=eq.${o}&order=${n}.desc&limit=${l}`,"GET")).data}),then:async(cb)=>cb({data:(await c(`${u}/rest/v1/${t}?room_id=eq.${o}&order=${n}.asc`,"GET")).data})})})}),limit:async(l)=>({data:(await c(`${u}/rest/v1/${t}?order=created_at.desc&limit=${l}`,"GET")).data}),then:async(cb)=>cb({data:(await c(`${u}/rest/v1/${t}`,"GET")).data}),upsert:async(b)=>c(`${u}/rest/v1/${t}`,"POST",b),delete:()=>({eq:(n,o)=>({then:async(cb)=>cb(await c(`${u}/rest/v1/${t}?${n}=eq.${o}`,"DELETE"))})})}),channel:()=>({on:()=>({subscribe:()=>console.log("Sync online")})})}}};
 let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room", isViewingChatBox = false;
 function init() {
     try {
@@ -12,20 +12,21 @@ function showAccessDenied(err) {
     document.getElementById('error-debug-details').innerText = `ERROR LOG:\n${err.message || err}`;
 }
 function dismissAccessDenied() { document.getElementById('denied-container').style.display = 'none'; document.getElementById('auth-container').style.display = 'block'; init(); }
-async function handleSignUp() {
-    const room = document.getElementById('auth-room').value.trim(), password = document.getElementById('auth-password').value;
-    if(!room || !password) return alert('Fill fields completely.');
-    const { error } = await supabaseClient.auth.signUp({ email: `${room.toLowerCase().replace(/[^a-z0-9]/g,'')}@bedside.project`, password });
-    if(error) return alert(error.message);
-    alert('Account created! Try logging in.');
-}
 async function handleLogin() {
     const room = document.getElementById('auth-room').value.trim(), password = document.getElementById('auth-password').value;
     if(!room || !password) return alert('Fill fields completely.');
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email: `${room.toLowerCase().replace(/[^a-z0-9]/g,'')}@bedside.project`, password });
-    if(error) return alert(error.message);
+    const email = `${room.toLowerCase().replace(/[^a-z0-9]/g,'')}@bedside.project`;
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+        const sign = await supabaseClient.auth.signUp({ email, password });
+        if (sign.error) return alert("Authentication Fault: " + sign.error.message);
+        const retry = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (retry.error) return alert("Access Initialized. Please re-enter password to confirm encryption index.");
+        currentUser = retry.data.user; loadUserProfile(); return;
+    }
     currentUser = data.user; loadUserProfile();
 }
+async function handleSignUp() { handleLogin(); }
 function handleLogout() { location.reload(); }
 async function loadUserProfile() {
     const { data } = await supabaseClient.from('profiles').select('room_number').eq('id', currentUser.id).single();
