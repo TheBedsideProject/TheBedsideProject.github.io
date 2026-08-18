@@ -1,7 +1,8 @@
-window.supabase={createClient:(u,k)=>{const h={"apikey":k,"Authorization":"Bearer "+k,"Content-Type":"application/json"},c=async(url,m,b)=>({data:await(await fetch(url,{method:m,headers:h,body:b?JSON.stringify(b):null})).json()});return{auth:{signUp:async(e)=>c(`${u}/auth/v1/signup` office,"POST",{email:e.email,password:e.password}),signInWithPassword:async(e)=>{let r=await c(`${u}/auth/v1/token?grant_type=password`,"POST",{email:e.email,password:e.password});return r.data?.user?{data:{user:r.data.user},error:null}:r.data?.error_description?.includes("confirm")?{data:null,error:{message:"Verification Pending"}}:{data:null,error:{message:"Invalid Parameters"}}},signOut:async()=>({error:null}),getUser:async()=>({data:{user:currentUser}})},from:(t)=>({select:(s)=>({eq:(n,o)=>({single:async()=>({data:(await c(`${u}/rest/v1/${t}?${s}=eq.${o}`,"GET")).data?.[0]||null}),order:(n,a)=>({limit:async(l)=>({data:(await c(`${u}/rest/v1/${t}?sender_name=eq.${o}&order=${n}.desc&limit=${l}`,"GET")).data}),then:async(cb)=>cb({data:(await c(`${u}/rest/v1/${t}?room_id=eq.${o}&order=${n}.asc`,"GET")).data})})})}),limit:async(l)=>({data:(await c(`${u}/rest/v1/${t}?order=created_at.desc&limit=${l}`,"GET")).data}),then:async(cb)=>cb({data:(await c(`${u}/rest/v1/${t}`,"GET")).data}),upsert:async(b)=>c(`${u}/rest/v1/${t}`,"POST",b),delete:()=>({eq:(n,o)=>({then:async(cb)=>cb(await c(`${u}/rest/v1/${t}?${n}=eq.${o}`,"DELETE"))})})}),channel:()=>({on:()=>({subscribe:()=>console.log("Sync online")})})}}};
+window.supabase={createClient:(u,k)=>{const h={"apikey":k,"Authorization":"Bearer "+k,"Content-Type":"application/json"},c=async(url,m,b)=>{try{const r=await fetch(url,{method:m,headers:h,body:b?JSON.stringify(b):null});return{data:r.ok?await r.json():null,error:r.ok?null:{message:"Transaction Exception"}};}catch(e){return{data:null,error:e};}};return{auth:{signUp:async(e)=>c(`${u}/auth/v1/signup`,"POST",{email:e.email,password:e.password}),signInWithPassword:async(e)=>{let r=await c(`${u}/auth/v1/token?grant_type=password`,"POST",{email:e.email,password:e.password});return r.data?.user?{data:{user:r.data.user},error:null}:{data:null,error:{message:"Invalid Parameters"}};},signOut:async()=>({error:null}),getUser:async()=>({data:{user:currentUser}})},from:(t)=>({select:(s)=>({eq:(n,o)=>({single:async()=>({data:((await c(`${u}/rest/v1/${t}?${n}=eq.${o}`,"GET")).data?.[0])||null}),order:(n,a)=>({limit:async(l)=>({data:(await c(`${u}/rest/v1/${t}?sender_name=eq.${o}&order=${n}.desc&limit=${l}`,"GET")).data}),then:async(cb)=>{cb({data:(await c(`${u}/rest/v1/${t}?room_id=eq.${o}&order=${n}.asc`,"GET")).data});}})})}),limit:async(l)=>({data:(await c(`${u}/rest/v1/${t}?order=created_at.desc&limit=${l}`,"GET")).data}),then:async(cb)=>cb({data:(await c(`${u}/rest/v1/${t}`,"GET")).data}),upsert:async(b)=>c(`${u}/rest/v1/${t}`,"POST",b),delete:()=>({eq:(n,o)=>({then:async(cb)=>cb(await c(`${u}/rest/v1/${t}?${n}=eq.${o}`,"DELETE"))})})}),channel:()=>({on:()=>({subscribe:()=>console.log("Sync online")})})}}};
 let supabaseClient = null, currentUser = null, currentRoomNumber = "Unknown Room", isViewingChatBox = false;
 function init() {
     try {
+        if (typeof SUPABASE_URL === 'undefined') throw new Error("config.js properties missing or unassigned.");
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         supabaseClient.auth.getUser().then(({data:{user}})=>{ if(user){ currentUser=user; loadUserProfile(); } });
     } catch(e) { showAccessDenied(e); }
@@ -19,9 +20,9 @@ async function handleLogin() {
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
         const sign = await supabaseClient.auth.signUp({ email, password });
-        if (sign.error) return alert("Authentication Fault: " + sign.error.message);
+        if (sign.error) return alert("System Profile Access Fault: " + sign.error.message);
         const retry = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (retry.error) return alert("Access Initialized. Please re-enter password to confirm encryption index.");
+        if (retry.error) return alert("Access initialized. Please click Sign In again to verify parameters.");
         currentUser = retry.data.user; loadUserProfile(); return;
     }
     currentUser = data.user; loadUserProfile();
@@ -93,7 +94,7 @@ async function renderWireframeList() {
         for (const p of profiles) {
             if(!p.room_number) continue;
             const { data: msg } = await supabaseClient.from('messages').select('message_content').eq('sender_name', "Room " + p.room_number).order('created_at', { ascending: false }).limit(1);
-            const text = msg?.[0] ? msg[0].message_content : "No message history yet", row = document.createElement('div');
+            const text = (msg && msg.length > 0) ? msg[0].message_content : "No message history yet", row = document.createElement('div');
             row.className = 'wireframe-row';
             row.innerHTML = `<div class="status-indicator"></div><div class="meta-block"><div class="room-heading">Room ${p.room_number}</div><div class="last-transmission-text">${text}</div></div>`;
             listContainer.appendChild(row);
