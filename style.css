@@ -1,4 +1,19 @@
-/* Multi-Theme Variable Architecture Mapping */
+:root {
+    --bg-main: #0a0f1d;
+    --panel-bg: rgba(15, 23, 42, 0.65);
+    --border-neon: #38bdf8;
+    --border-dim: rgba(56, 189, 248, 0.15);
+    --text-neon: #38bdf8;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --chat-box-bg: #020617;
+    --font-stack: ui-monospace, SFMono-Regular, monospace;
+    --panel-radius: 16px;
+    --thick-border: 1px solid var(--border-dim);
+    --header-border: 1px solid var(--border-dim);
+    --row-border: 1px solid var(--border-dim);
+}
+
 body.theme-cyberpunk {
     --bg-main: #0a0f1d;
     --panel-bg: rgba(15, 23, 42, 0.65);
@@ -135,10 +150,17 @@ button {
     width: 100%; padding: 14px; font-size: 14px; font-weight: 700; text-transform: uppercase;
     border: var(--thick-border); border-radius: var(--panel-radius); cursor: pointer;
     background: var(--border-neon); color: var(--bg-main);
+    margin-bottom: 12px;
 }
 body.theme-cyberpunk button { color: #020617; }
 
-.secondary-btn { background: transparent; color: var(--text-primary); border: var(--thick-border); }
+/* Fixed Registration Action Button Color Link Matching */
+.secondary-btn { 
+    background: var(--border-neon) !important; 
+    color: var(--bg-main) !important; 
+    border: var(--thick-border);
+}
+body.theme-cyberpunk .secondary-btn { color: #020617 !important; }
 
 .dashboard-header {
     display: flex; justify-content: space-between; align-items: center;
