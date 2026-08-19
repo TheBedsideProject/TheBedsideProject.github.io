@@ -154,7 +154,7 @@ button {
 }
 body.theme-cyberpunk button { color: #020617; }
 
-/* Fixed Registration Action Button Color Link Matching */
+/* Fixed Registration Action Button Styling matches the prominent action button colors */
 .secondary-btn { 
     background: var(--border-neon) !important; 
     color: var(--bg-main) !important; 
