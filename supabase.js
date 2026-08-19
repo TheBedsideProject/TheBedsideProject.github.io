@@ -68,7 +68,7 @@
                     eq: (column, targetValue) => ({
                         single: async () => {
                             const response = await makeRequest(`/rest/v1/${table}?${column}=eq.${targetValue}`, "GET");
-                            // Clean array row extraction parsing check prevents empty object pollution
+                            // Clean array row mapping index parsing extraction checks
                             const resolvedData = (response.data && response.data.length > 0) ? response.data[0] : null;
                             return { data: resolvedData, error: response.error };
                         },
@@ -93,13 +93,11 @@
                     callback({ data: response.data || [], error: response.error });
                 },
                 upsert: async (payload) => {
-                    // Repaired internal address scoping rules to support custom table entry routing
                     return makeRequest(`/rest/v1/${table}`, "POST", payload);
                 },
                 delete: () => ({
                     eq: (column, targetValue) => ({
                         then: async (callback) => {
-                            // Repaired local query scoping mapping bounds
                             const response = await makeRequest(`/rest/v1/${table}?${column}=eq.${targetValue}`, "DELETE");
                             callback(response);
                         }
