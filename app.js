@@ -55,7 +55,6 @@ async function handleLogin() {
     
     const { data: prof } = await supabaseClient.from('profiles').select('*').eq('room_number', room).single();
     
-    // FIXED: Strict evaluation maps object properties directly to drop array false positives
     if (prof && prof.password_hash) {
         if (prof.password_hash !== pass) return alert("Access Denied: Incorrect password for Room " + room);
         currentUser = { id: prof.id, aud: "authenticated" };
