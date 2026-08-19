@@ -68,7 +68,7 @@
                     eq: (column, targetValue) => ({
                         single: async () => {
                             const response = await makeRequest(`/rest/v1/${table}?${column}=eq.${targetValue}`, "GET");
-                            // Fixed structural item extractor securely unpacks object entry arrays via index maps
+                            // FIXED: Unpacks the target single object record securely using array mapping indexes
                             const resolvedData = (response.data && response.data.length > 0) ? response.data[0] : null;
                             return { data: resolvedData, error: response.error };
                         },
